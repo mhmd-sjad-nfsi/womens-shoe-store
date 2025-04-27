@@ -6,5 +6,4 @@ const store = configureStore({
     cart: cartReducer, // اضافه کن
   },
 });
-
 export default store;

@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, Link as RouterLink } from "react-router-dom";
 import axios from "axios";
+import { useDispatch } from "react-redux";
+
+import { addToCart } from "../slices/cartSlice";
 import {
   Container,
   Typography,
@@ -19,10 +22,12 @@ import {
 } from "@mui/material";
 
 function ProductScreen() {
+  const dispatch = useDispatch();
   const { id } = useParams();
   const [product, setProduct] = useState(null);
   const [qty, setQty] = useState(1);
-
+  const addToCartHandler = () => {
+    dispatch(addToCart({ ...product, qty }));}
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -110,19 +115,25 @@ function ProductScreen() {
               )}
             </Stack>
 
-            <Typography variant="h5" fontWeight="bold" color="primary" gutterBottom>
+            <Typography
+              variant="h5"
+              fontWeight="bold"
+              color="primary"
+              gutterBottom
+            >
               {product.price.toLocaleString()} تومان
             </Typography>
 
-            <Button
-              variant="contained"
-              fullWidth
-              disabled={product.countInStock === 0}
-              size="large"
-              sx={{ mt: 2, py: 1.5 }}
-            >
-              افزودن به سبد خرید
-            </Button>
+            <Box mt={2} textAlign="center">
+              <Button
+                variant="contained"
+                color="primary"
+                size="large"
+                onClick={addToCartHandler}
+              >
+                افزودن به سبد خرید
+              </Button>
+            </Box>
           </Grid>
         </Grid>
       </Paper>
