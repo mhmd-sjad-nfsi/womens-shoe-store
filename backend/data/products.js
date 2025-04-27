@@ -1,7 +1,7 @@
 const products = [
   {
     name: "کفش اسپرت Nike Air Zoom Pegasus 39",
-    image: "/images/pegasus39.jpg",
+    image: "/uploads/pegasus39.jpg",
     description:
       "کفش اسپرت زنانه با فناوری Zoom Air برای جذب ضربه، رویه مش تنفس‌پذیر و طراحی سبک.",
     brand: "Nike",
@@ -15,7 +15,7 @@ const products = [
   },
   {
     name: "کفش رانینگ Adidas Ultraboost 22",
-    image: "/images/ultraboost22.jpg",
+    image: "/uploads/ultraboost22.jpg",
     description:
       "تجربه‌ٔ رانینگ نرم و بازدهی بالا با تکنولوژی Boost، مناسب دویدن طولانی‌مدت.",
     brand: "Adidas",
@@ -29,7 +29,7 @@ const products = [
   },
   {
     name: "کفش چرم مجلسی زنانه Louboutin Classic",
-    image: "/images/louboutin_classic.jpeg",
+    image: "/uploads/louboutin_classic.jpeg",
     description:
       "کفش پاشنه‌بلند رسمی با رویهٔ چرم طبیعی و کفی نرم، مناسب مجالس و مهمانی‌ها.",
     brand: "Louboutin",
@@ -43,7 +43,7 @@ const products = [
   },
   {
     name: "چکمه زنانه Timberland Classic Boot",
-    image: "/images/timberland_boot.jpeg",
+    image: "/uploads/timberland_boot.jpeg",
     description:
       "چکمهٔ تمام‌فصل با طراحی ضدآب و زیره مقاوم، مناسب استفادهٔ روزمره.",
     brand: "Timberland",
@@ -57,7 +57,7 @@ const products = [
   },
   {
     name: "صندل راحتی زنانه Birkenstock Arizona",
-    image: "/images/birkenstock_arizona.jpg",
+    image: "/uploads/birkenstock_arizona.jpg",
     description:
       "صندل با کف طبی و بندهای قابل تنظیم، سبک و مناسب استفادهٔ روزمره در تابستان.",
     brand: "Birkenstock",
@@ -71,7 +71,7 @@ const products = [
   },
   {
     name: "کفش کالج زنانه Clarks Un Adorn Zip",
-    image: "/images/clarks_unadorn.jpg",
+    image: "/uploads/clarks_unadorn.jpg",
     description:
       "کفش کالج با طراحی ساده، قابل تغییر بند و کفی ابری برای راحتی طولانی‌مدت.",
     brand: "Clarks",
@@ -85,7 +85,7 @@ const products = [
   },
   {
     name: "کفش کتانی Vans Old Skool",
-    image: "/images/vans_oldskool.jpg",
+    image: "/uploads/vans_oldskool.jpg",
     description:
       "کفش کلاسیک اسکیت با رویهٔ جیر و کنفورت بالا، مناسب استایل کژوال.",
     brand: "Vans",
@@ -99,7 +99,7 @@ const products = [
   },
   {
     name: "کتونی Puma Suede Classic",
-    image: "/images/puma_suede.jpg",
+    image: "/uploads/puma_suede.jpg",
     description: "کفش نمادین سویید با کفی نرم، طراحی کلاسیک و دوام بالا.",
     brand: "Puma",
     category: "روزمره",
@@ -112,7 +112,7 @@ const products = [
   },
   {
     name: "کفش ورزشی زنانه Asics Gel-Kayano 28",
-    image: "/images/gel_kayano28.jpg",
+    image: "/uploads/gel_kayano28.jpg",
     description: "با فناوری GEL برای جذب ضربه و حفظ تعادل در دویدن‌های طولانی.",
     brand: "Asics",
     category: "دویدن",
@@ -125,7 +125,7 @@ const products = [
   },
   {
     name: "کفش راحتی Skechers Go Walk Joy",
-    image: "/images/skechers_gowalk.jpg",
+    image: "/uploads/skechers_gowalk.jpg",
     description:
       "کفشی سبک و راحت با کفی انعطاف‌پذیر مناسب پیاده‌روی‌های طولانی.",
     brand: "Skechers",
@@ -139,7 +139,7 @@ const products = [
   },
   {
     name: "کفش پیاده‌روی New Balance 880v11",
-    image: "/images/newbalance_880.jpg",
+    image: "/uploads/newbalance_880.jpg",
     description:
       "راحتی فوق‌العاده و پشتیبانی عالی، مناسب استفاده روزمره و ورزشی.",
     brand: "New Balance",
@@ -153,7 +153,7 @@ const products = [
   },
   {
     name: "بوت زنانه Dr. Martens 1460 Pascal",
-    image: "/images/drmartens_1460.jpeg",
+    image: "/uploads/drmartens_1460.jpeg",
     description: "بوت چرمی مقاوم با استایل خاص و زیرهٔ ضد لغزش.",
     brand: "Dr. Martens",
     category: "چکمه",
@@ -166,7 +166,7 @@ const products = [
   },
   {
     name: "کفش اسپرت Reebok Nano X2",
-    image: "/images/reebok_nano.png",
+    image: "/uploads/reebok_nano.png",
     description:
       "مناسب تمرینات کراس‌فیت و بدنسازی با طراحی مقاوم و پشتیبانی عالی.",
     brand: "Reebok",
@@ -180,7 +180,7 @@ const products = [
   },
   {
     name: "کفش تابستانی Toms Classic Alpargata",
-    image: "/images/toms_alpargata.jpg",
+    image: "/uploads/toms_alpargata.jpg",
     description: "کفش سبک و تنفس‌پذیر مناسب استفاده روزمره در هوای گرم.",
     brand: "Toms",
     category: "روزمره",
@@ -193,7 +193,7 @@ const products = [
   },
   {
     name: "صندل مجلسی Steve Madden Irenee",
-    image: "/images/steve_madden_irenee.jpg",
+    image: "/uploads/steve_madden_irenee.jpg",
     description: "صندل با پاشنه کوتاه و طراحی شیک، مناسب مهمانی و مجالس.",
     brand: "Steve Madden",
     category: "مجلسی",
@@ -206,7 +206,7 @@ const products = [
   },
   {
     name: "کفش پاشنه بلند Aldo Stessy",
-    image: "/images/aldo_stessy.jpg",
+    image: "/uploads/aldo_stessy.jpg",
     description: "کفش مجلسی با طراحی کلاسیک و رویه براق مناسب مراسم رسمی.",
     brand: "Aldo",
     category: "مجلسی",
@@ -219,7 +219,7 @@ const products = [
   },
   {
     name: "کفش پیاده‌روی Columbia Crestwood",
-    image: "/images/columbia_crestwood.jpg",
+    image: "/uploads/columbia_crestwood.jpg",
     description:
       "کفش مقاوم در برابر آب و مناسب طبیعت‌گردی و پیاده‌روی‌های طولانی.",
     brand: "Columbia",
@@ -233,7 +233,7 @@ const products = [
   },
   {
     name: "کفش طبی زنانه Ecco Soft 7",
-    image: "/images/ecco_soft7.jpg",
+    image: "/uploads/ecco_soft7.jpg",
     description:
       "کفشی راحت با طراحی شیک و کیفیت چرم طبیعی برای استفاده روزمره.",
     brand: "Ecco",
@@ -247,7 +247,7 @@ const products = [
   },
   {
     name: "کفش اسپرت Fila Disruptor II",
-    image: "/images/fila_disruptor.jpg",
+    image: "/uploads/fila_disruptor.jpg",
     description: "کفش اسپرت با طراحی Chunky و زیره ضخیم محبوب بین جوانان.",
     brand: "Fila",
     category: "اسپرت",
@@ -260,7 +260,7 @@ const products = [
   },
   {
     name: "بوت زنانه UGG Classic Short II",
-    image: "/images/ugg_classic.png",
+    image: "/uploads/ugg_classic.png",
     description: "بوت گرم و نرم با آستر پشمی مناسب زمستان‌های سرد.",
     brand: "UGG",
     category: "چکمه",
@@ -273,7 +273,7 @@ const products = [
   },
   {
     name: "کفش کلاسیک Converse Chuck Taylor",
-    image: "/images/converse_chuck.jpg",
+    image: "/uploads/converse_chuck.jpg",
     description: "کفش نمادین کانوِرس با طراحی کلاسیک و مناسب استایل خیابانی.",
 
     brand: "Converse",
@@ -287,7 +287,7 @@ const products = [
   },
   {
     name: "کفش پیاده‌روی Merrell Moab 2",
-    image: "/images/merrell_moab.jpg",
+    image: "/uploads/merrell_moab.jpg",
     description: "کفش مقاوم با زیره ضدلغزش، مناسب کوهنوردی و پیاده‌روی طولانی.",
     brand: "Merrell",
     category: "طبیعت‌گردی",
@@ -300,7 +300,7 @@ const products = [
   },
   {
     name: "کفش رسمی زنانه Geox D Annya",
-    image: "/images/geox_annya.jpg",
+    image: "/uploads/geox_annya.jpg",
     description:
       "کفش رسمی با طراحی ساده و خاصیت تنفس‌پذیری بالا، مناسب کار روزمره.",
     brand: "Geox",
