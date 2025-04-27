@@ -1,11 +1,9 @@
 import express from 'express';
+import { getProducts, getProductById } from '../controllers/productController.js';
+
 const router = express.Router();
 
-// @route   GET /api/products
-// @desc    تست محصول
-// @access  Public
-router.get('/', (req, res) => {
-  res.json([{ id: 1, name: 'کفش زنانه نمونه' }]);
-});
+router.route('/').get(getProducts);
+router.route('/:id').get(getProductById);
 
 export default router;
