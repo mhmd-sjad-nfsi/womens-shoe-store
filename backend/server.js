@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 
 import connectDB from './config/db.js';
 import productRoutes from './routes/productRoutes.js';  // بعدا می‌سازیم
+import path from 'path';
+
 
 dotenv.config();
 connectDB();
@@ -13,6 +15,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/images', express.static(path.resolve('frontend/public/images')));
 
 // Test Route
 app.get('/', (req, res) => {
