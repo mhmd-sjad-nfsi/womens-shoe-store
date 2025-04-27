@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { removeFromCart, updateCart } from "../slices/cartSlice";
+import { removeFromCart, updateCart } from "../redux/slices/cartSlice";
 import { Button, Typography, Grid, Box, TextField } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 

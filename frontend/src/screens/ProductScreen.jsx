@@ -3,7 +3,7 @@ import { useParams, Link as RouterLink } from "react-router-dom";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 
-import { addToCart } from "../slices/cartSlice";
+import { addToCart } from "../redux/slices/cartSlice";
 import {
   Container,
   Typography,

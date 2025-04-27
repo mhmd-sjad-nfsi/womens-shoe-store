@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 
 import connectDB from './config/db.js';
 import productRoutes from './routes/productRoutes.js';  // بعدا می‌سازیم
+import userRoutes from './routes/userRoutes.js';
+
 
 dotenv.config();
 connectDB();
@@ -21,6 +23,10 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/api/products', productRoutes);
+
+// سایر روت‌ها
+app.use('/api/users', userRoutes);
+
 
 // Error handling (اختیاری در آینده)
 app.use((req, res, next) => {
