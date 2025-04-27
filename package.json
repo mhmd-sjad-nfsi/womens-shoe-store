@@ -1,11 +1,17 @@
 {
-    "name": "womens-shoe-store",
-    "private": true,
-    "scripts": {
-      "dev": "concurrently \"npm run server --prefix backend\" \"npm run dev --prefix frontend\""
-    },
-    "devDependencies": {
-      "concurrently": "^8.0.0"
-    }
-  }
-  
+  "name": "womens-shoe-store",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "frontend": "cd frontend && npm start",
+    "backend": "cd backend && npm run server",
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
