@@ -1,29 +1,32 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import { ThemeProvider, CssBaseline } from "@mui/material";
-import { CacheProvider } from "@emotion/react";
-import createCache from "@emotion/cache";
-import stylisRTLPlugin from "stylis-plugin-rtl";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import { CacheProvider } from '@emotion/react';
+import createCache from '@emotion/cache';
+import stylisRTLPlugin from 'stylis-plugin-rtl';
 
-import App from "./App";
-import theme from "./theme"; // مسیر درست به theme
-import "./index.css";
+import App from './App.jsx';
+import store from './redux/store.js';
+import theme from './theme/index.js';
 
-// ایجاد کش راست به چپ
+// برای راست‌چین
 const cacheRtl = createCache({
-  key: "muirtl",
+  key: 'muirtl',
   stylisPlugins: [stylisRTLPlugin],
 });
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <CacheProvider value={cacheRtl}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <Provider store={store}>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </Provider>
       </ThemeProvider>
     </CacheProvider>
   </React.StrictMode>
