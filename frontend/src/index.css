@@ -65,4 +65,15 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    direction: rtl;
+    font-family: "IRANSans", "Roboto", "Arial", sans-serif;
+    background-color: #fff;
+    overflow-x: hidden; /* جلوگیری از اسکرول افقی اضافی */
+  }
+  
 }
