@@ -1,0 +1,17 @@
+{
+  "name": "women-shoe-store",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "frontend": "cd frontend && npm start",
+    "backend": "cd backend && npm run server",
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
