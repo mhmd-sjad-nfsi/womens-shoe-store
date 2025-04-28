@@ -1,12 +1,22 @@
 import express from 'express';
-import { getProducts, getProductById } from '../controllers/productController.js';
+import {
+  getProducts,
+  getProductById,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from '../controllers/productController.js';
+import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// لیست محصولات
-router.get('/', getProducts);
+router.route('/')
+  .get(getProducts)                               // GET /api/products
+  .post(protect, admin, createProduct);           // POST /api/products (ادمین)
 
-// جزئیات محصول
-router.get('/:id', getProductById);
+router.route('/:id')
+  .get(getProductById)                            // GET /api/products/:id
+  .put(protect, admin, updateProduct)             // PUT /api/products/:id (ادمین)
+  .delete(protect, admin, deleteProduct);         // DELETE /api/products/:id (ادمین)
 
 export default router;

@@ -58,3 +58,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ user: req.user._id });
   res.json(orders);
 });
+export const getOrders = asyncHandler(async (req, res) => {
+  const orders = await Order.find({}).populate('user', 'name email');
+  res.json(orders);
+});
