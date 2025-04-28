@@ -23,9 +23,7 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/api/products', productRoutes);
-
-// سایر روت‌ها
-app.use('/api/users', userRoutes);
+app.use('/api/users', userRoutes); 
 
 
 // Error handling (اختیاری در آینده)

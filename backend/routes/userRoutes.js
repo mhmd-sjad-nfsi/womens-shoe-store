@@ -12,7 +12,7 @@ const router = express.Router();
 router.post(
 
   '/register',
-  protect,
+
   asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
 
@@ -47,7 +47,7 @@ router.post(
 // ورود یوزر
 router.post(
   '/login',
-  protect,
+  
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
