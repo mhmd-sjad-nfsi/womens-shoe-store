@@ -6,6 +6,7 @@ import CartScreen from "./screens/CartScreen";
 import LoginScreen from "./screens/LoginScreen";
 import RegisterScreen from "./screens/RegisterScreen";
 import Layout from "./components/Layout";
+import CheckoutScreen from "./screens/CheckoutScreen";
 
 function App() {
   
@@ -17,6 +18,8 @@ function App() {
         <Route path="cart" element={<CartScreen />} />
         <Route path="login" element={<LoginScreen />} />
         <Route path="register" element={<RegisterScreen />} />
+        <Route path="checkout" element={<CheckoutScreen />} />
+        <Route path="order/:id" element={<OrderScreen />} />
       </Route>
     </Routes>
   );
