@@ -11,6 +11,7 @@ const orderItemSchema = mongoose.Schema(
       required: true,
       ref: 'Product',
     },
+    size: { type: Number, required: true },
   },
   { _id: false }
 );

@@ -1,34 +1,46 @@
-import { createSlice } from "@reduxjs/toolkit";
+// frontend/src/redux/slices/cartSlice.js
+
+import { createSlice } from '@reduxjs/toolkit';
+
+const initialState = {
+  // هر آیتم شامل: {_id, name, image, price, size, qty, ...}
+  cartItems: [],
+};
 
 const cartSlice = createSlice({
-  name: "cart",
-  initialState: {
-    cartItems: [],
-  },
+  name: 'cart',
+  initialState,
   reducers: {
+    // اضافه کردن به سبد خرید با در نظر گرفتن سایز
     addToCart: (state, action) => {
       const item = action.payload;
-      const existItem = state.cartItems.find((x) => x._id === item._id);
+      // تطبیق بر اساس آیدی محصول و سایز
+      const existItem = state.cartItems.find(
+        (x) => x._id === item._id && x.size === item.size
+      );
+
       if (existItem) {
+        // اگر همان محصول و سایز قبلاً وجود داشت، جایگزینش کن
         state.cartItems = state.cartItems.map((x) =>
-          x._id === existItem._id ? item : x
+          x._id === existItem._id && x.size === existItem.size
+            ? item
+            : x
         );
       } else {
+        // در غیر این صورت، آیتم جدید را اضافه کن
         state.cartItems.push(item);
       }
     },
+
+    // حذف آیتم از سبد خرید بر اساس آیدی و سایز
     removeFromCart: (state, action) => {
-      state.cartItems = state.cartItems.filter((x) => x._id !== action.payload);
-    },
-    updateCart: (state, action) => {
-      const { id, qty } = action.payload;
-      const item = state.cartItems.find((x) => x._id === id);
-      if (item) {
-        item.qty = qty;
-      }
+      const { id, size } = action.payload;
+      state.cartItems = state.cartItems.filter(
+        (x) => !(x._id === id && x.size === size)
+      );
     },
   },
 });
 
-export const { addToCart, removeFromCart, updateCart } = cartSlice.actions;
+export const { addToCart, removeFromCart } = cartSlice.actions;
 export default cartSlice.reducer;
