@@ -1,24 +1,26 @@
 import { useDispatch, useSelector } from "react-redux";
-import { removeFromCart, updateCart } from "../redux/slices/cartSlice";
-import { Button, Typography, Grid, Box, TextField } from "@mui/material";
+import { removeFromCart } from "../redux/slices/cartSlice";
+import {
+  Box, Typography, Grid, Button, Paper, Stack
+} from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 
 export default function CartScreen() {
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.cartItems);
 
-  const removeFromCartHandler = (id) => {
-    dispatch(removeFromCart(id));
+  const removeFromCartHandler = (id, size) => {
+    dispatch(removeFromCart({ id, size }));
   };
 
-  const updateCartHandler = (id, qty) => {
-    dispatch(updateCart({ id, qty }));
-  };
+  const totalPrice = cartItems
+    .reduce((acc, item) => acc + item.price * item.qty, 0)
+    .toFixed(2);
 
   return (
-    <Box sx={{ padding: 2 }}>
+    <Box sx={{ p: 2 }}>
       <Typography variant="h4" gutterBottom>
-        سبد خرید
+        سبد خرید شما
       </Typography>
 
       {cartItems.length === 0 ? (
@@ -26,42 +28,61 @@ export default function CartScreen() {
       ) : (
         <Grid container spacing={2}>
           {cartItems.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item._id}>
-              <Box sx={{ display: "flex", alignItems: "center", p: 2, border: 1 }}>
-                <img src={item.image} alt={item.name} style={{ width: 80, height: 80, objectFit: 'cover' }} />
-                <Box sx={{ ml: 2 }}>
-                  <Typography>{item.name}</Typography>
-                  <TextField
-                    type="number"
-                    value={item.qty}
-                    onChange={(e) => updateCartHandler(item._id, e.target.value)}
-                    sx={{ width: 60 }}
+            <Grid
+              item
+              xs={12}
+              sm={6}
+              md={4}
+              key={`${item._id}-${item.size}`}
+            >
+              <Paper sx={{ p: 2 }}>
+                <Stack spacing={1}>
+                  <Box
+                    component="img"
+                    src={item.image}
+                    alt={item.name}
+                    sx={{ width: "100%", borderRadius: 1 }}
                   />
-                  <Typography>{item.price.toLocaleString()} تومان</Typography>
+                  <Typography>{item.name}</Typography>
+                  <Typography>سایز: {item.size}</Typography>
+                  <Typography>تعداد: {item.qty}</Typography>
+                  <Typography>
+                    قیمت واحد: {item.price.toLocaleString()} تومان
+                  </Typography>
+                  <Typography>
+                    مجموع: {(item.price * item.qty).toLocaleString()} تومان
+                  </Typography>
                   <Button
                     variant="outlined"
-                    color="secondary"
-                    onClick={() => removeFromCartHandler(item._id)}
+                    color="error"
+                    onClick={() =>
+                      removeFromCartHandler(item._id, item.size)
+                    }
                   >
                     حذف
                   </Button>
-                </Box>
-              </Box>
+                </Stack>
+              </Paper>
             </Grid>
           ))}
         </Grid>
       )}
 
-      <Box sx={{ mt: 3, textAlign: "center" }}>
-        <Button
-          component={RouterLink}
-          to="/checkout"
-          variant="contained"
-          color="primary"
-        >
-          ادامه به تسویه حساب
-        </Button>
-      </Box>
+      {cartItems.length > 0 && (
+        <Box sx={{ mt: 4, textAlign: "center" }}>
+          <Typography variant="h6">
+            جمع کل سبد: {totalPrice} تومان
+          </Typography>
+          <Button
+            variant="contained"
+            component={RouterLink}
+            to="/checkout"
+            sx={{ mt: 2 }}
+          >
+            ادامه به پرداخت
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 }

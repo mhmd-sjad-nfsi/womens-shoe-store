@@ -14,27 +14,35 @@ export default function ProductScreen() {
   const dispatch = useDispatch();
 
   const [product, setProduct] = useState(null);
-  const [size, setSize]     = useState("");
-  const [qty, setQty]       = useState(1);
+  const [size, setSize]       = useState("");
+  const [qty, setQty]         = useState(1);
 
   useEffect(() => {
     const fetchProduct = async () => {
       const { data } = await axios.get(`/api/products/${id}`);
       setProduct(data);
-      // پیش‌فرض اولین سایز موجود
       setSize(data.sizes[0] || "");
     };
     fetchProduct();
   }, [id]);
 
-  if (!product) return <div>در حال بارگذاری...</div>;
+  if (!product) {
+    return <Typography>در حال بارگذاری...</Typography>;
+  }
 
-  // موجودی برای سایز انتخاب‌شده
+  // پیدا کردن موجودی برای سایز انتخاب‌شده
   const stockObj = product.stock.find((s) => s.size === size);
   const availableCount = stockObj ? stockObj.count : 0;
 
   const addToCartHandler = () => {
-    dispatch(addToCart({ ...product, size, qty }));
+    dispatch(addToCart({
+      _id: product._id,
+      name: product.name,
+      image: product.image,
+      price: product.price,
+      size,
+      qty,
+    }));
     navigate("/cart");
   };
 
@@ -55,7 +63,9 @@ export default function ProductScreen() {
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
-          <Typography variant="h4" fontWeight="bold">{product.name}</Typography>
+          <Typography variant="h4" fontWeight="bold">
+            {product.name}
+          </Typography>
           <Stack direction="row" spacing={1} alignItems="center" mb={2}>
             <Rating value={product.rating} precision={0.5} readOnly />
             <Typography>({product.numReviews})</Typography>
@@ -75,15 +85,20 @@ export default function ProductScreen() {
               <Select
                 value={size}
                 label="سایز"
-                onChange={(e) => { setSize(e.target.value); setQty(1); }}
+                onChange={(e) => {
+                  setSize(e.target.value);
+                  setQty(1);
+                }}
               >
                 {product.sizes.map((sz) => (
-                  <MenuItem key={sz} value={sz}>{sz}</MenuItem>
+                  <MenuItem key={sz} value={sz}>
+                    {sz}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
 
-            {/* انتخاب تعداد بر اساس موجودی سایز */}
+            {/* انتخاب تعداد */}
             <FormControl size="small" disabled={availableCount === 0}>
               <InputLabel>تعداد</InputLabel>
               <Select
@@ -92,14 +107,20 @@ export default function ProductScreen() {
                 onChange={(e) => setQty(e.target.value)}
               >
                 {[...Array(availableCount).keys()].map((x) => (
-                  <MenuItem key={x+1} value={x+1}>{x+1}</MenuItem>
+                  <MenuItem key={x + 1} value={x + 1}>
+                    {x + 1}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
 
             {/* وضعیت موجودی */}
             <Chip
-              label={availableCount > 0 ? `موجود: ${availableCount}` : "ناموجود"}
+              label={
+                availableCount > 0
+                  ? `موجود: ${availableCount}`
+                  : "ناموجود"
+              }
               color={availableCount > 0 ? "success" : "error"}
             />
           </Stack>
