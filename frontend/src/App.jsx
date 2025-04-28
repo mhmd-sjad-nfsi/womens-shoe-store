@@ -7,6 +7,7 @@ import LoginScreen from "./screens/LoginScreen";
 import RegisterScreen from "./screens/RegisterScreen";
 import Layout from "./components/Layout";
 import CheckoutScreen from "./screens/CheckoutScreen";
+import OrderScreen from "./screens/OrderScreen";
 
 function App() {
   
