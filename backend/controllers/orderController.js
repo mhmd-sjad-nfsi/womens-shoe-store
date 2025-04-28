@@ -1,5 +1,8 @@
+// backend/controllers/orderController.js
+
 import asyncHandler from 'express-async-handler';
 import Order from '../models/orderModel.js';
+import Product from '../models/productModel.js'; // ← اضافه شد
 
 // @desc    ایجاد سفارش جدید
 // @route   POST /api/orders
@@ -20,6 +23,7 @@ export const addOrderItems = asyncHandler(async (req, res) => {
     throw new Error('سبد خرید خالی است');
   }
 
+  // ایجاد سفارش
   const order = new Order({
     orderItems,
     user: req.user._id,
@@ -31,7 +35,21 @@ export const addOrderItems = asyncHandler(async (req, res) => {
     totalPrice,
   });
 
+  // ذخیره سفارش در دیتابیس
   const createdOrder = await order.save();
+
+  // ← این قسمت: کسر موجودی هر محصول برای هر سایز
+  for (const item of createdOrder.orderItems) {
+    const prod = await Product.findById(item.product);
+    if (prod) {
+      const stockEntry = prod.stock.find((s) => s.size === item.size);
+      if (stockEntry) {
+        stockEntry.count = Math.max(stockEntry.count - item.qty, 0);
+      }
+      await prod.save();
+    }
+  }
+
   res.status(201).json(createdOrder);
 });
 
@@ -58,6 +76,10 @@ export const getMyOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ user: req.user._id });
   res.json(orders);
 });
+
+// @desc    دریافت همهٔ سفارش‌ها (ادمین)
+// @route   GET /api/orders
+// @access  Private/Admin
 export const getOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({}).populate('user', 'name email');
   res.json(orders);

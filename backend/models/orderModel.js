@@ -4,7 +4,7 @@ const orderItemSchema = mongoose.Schema(
   {
     name:    { type: String, required: true },
     qty:     { type: Number, required: true },
-    size:    { type: Number, required: true },  // ← اضافه شد
+    size:    { type: Number, required: true },
     image:   { type: String, required: true },
     price:   { type: Number, required: true },
     product: {
@@ -23,8 +23,8 @@ const orderSchema = mongoose.Schema(
       required: true,
       ref: 'User',
     },
-    orderItems:     [orderItemSchema],
-    shippingAddress:{
+    orderItems:      [orderItemSchema],
+    shippingAddress: {
       address:    { type: String, required: true },
       city:       { type: String, required: true },
       postalCode: { type: String, required: true },
@@ -46,10 +46,7 @@ const orderSchema = mongoose.Schema(
     isDelivered:   { type: Boolean, required: true, default: false },
     deliveredAt:   { type: Date },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const Order = mongoose.model('Order', orderSchema);
-export default Order;
+export default mongoose.model('Order', orderSchema);

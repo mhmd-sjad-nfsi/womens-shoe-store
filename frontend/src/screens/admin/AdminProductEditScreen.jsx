@@ -3,14 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import {
-  Container,
-  Typography,
-  TextField,
-  Button,
-  Paper,
-  CircularProgress,
-  Alert,
-  Stack,
+  Container, Typography, TextField, Button, Paper,
+  CircularProgress, Alert, Stack, Box
 } from '@mui/material';
 
 export default function AdminProductEditScreen() {
@@ -18,16 +12,19 @@ export default function AdminProductEditScreen() {
   const navigate = useNavigate();
   const { userInfo } = useSelector((state) => state.user);
 
-  const [name, setName]           = useState('');
-  const [price, setPrice]         = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
+  const [ setSuccess] = useState(false);
+
+  // فیلدهای محصول
+  const [name, setName]         = useState('');
+  const [price, setPrice]       = useState(0);
   const [description, setDescription] = useState('');
-  const [image, setImage]         = useState('');
-  const [brand, setBrand]         = useState('');
-  const [category, setCategory]   = useState('');
-  const [countInStock, setCountInStock] = useState(0);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState('');
-  const [ setSuccess]     = useState(false);
+  const [image, setImage]       = useState('');
+  const [brand, setBrand]       = useState('');
+  const [category, setCategory] = useState('');
+  const [sizes, setSizes]       = useState([]);         // [36,37,...]
+  const [stock, setStock]       = useState([]);         // [{size, count},...]
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -43,7 +40,8 @@ export default function AdminProductEditScreen() {
         setImage(data.image);
         setBrand(data.brand);
         setCategory(data.category);
-        setCountInStock(data.countInStock);
+        setSizes(data.sizes);
+        setStock(data.stock);
       } catch (err) {
         setError(err.response?.data?.message || err.message);
       } finally {
@@ -66,7 +64,7 @@ export default function AdminProductEditScreen() {
       };
       await axios.put(
         `/api/products/${productId}`,
-        { name, price, description, image, brand, category, countInStock },
+        { name, price, description, image, brand, category, sizes, stock, colors: [] },
         config
       );
       setSuccess(true);
@@ -78,12 +76,27 @@ export default function AdminProductEditScreen() {
     }
   };
 
+  // وقتی سایز جدید اضافه شد
+  const handleAddSize = () => {
+    const newSize = prompt('سایز جدید را وارد کنید:');
+    const sz = Number(newSize);
+    if (sz && !sizes.includes(sz)) {
+      setSizes([...sizes, sz].sort((a, b) => a - b));
+      setStock([...stock, { size: sz, count: 0 }]);
+    }
+  };
+
+  // تغییر تعداد برای یک سایز
+  const handleStockChange = (idx, newCount) => {
+    const updated = [...stock];
+    updated[idx].count = Number(newCount);
+    setStock(updated);
+  };
+
   return (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          ویرایش محصول
-        </Typography>
+        <Typography variant="h5" gutterBottom>ویرایش محصول</Typography>
         {loading ? (
           <CircularProgress />
         ) : error ? (
@@ -92,48 +105,39 @@ export default function AdminProductEditScreen() {
           <Box component="form" onSubmit={submitHandler}>
             <Stack spacing={2}>
               <TextField label="نام" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
-              <TextField
-                label="قیمت"
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="دسته"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="برند"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="موجودی"
-                type="number"
-                value={countInStock}
-                onChange={(e) => setCountInStock(e.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="آدرس تصویر"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                fullWidth
-              />
+              <TextField label="قیمت" type="number" value={price} onChange={(e) => setPrice(e.target.value)} fullWidth />
+              <TextField label="دسته" value={category} onChange={(e) => setCategory(e.target.value)} fullWidth />
+              <TextField label="برند" value={brand} onChange={(e) => setBrand(e.target.value)} fullWidth />
+              <TextField label="آدرس تصویر" value={image} onChange={(e) => setImage(e.target.value)} fullWidth />
               <TextField
                 label="توضیحات"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                fullWidth
-                multiline
-                rows={3}
+                fullWidth multiline rows={3}
               />
+
+              {/* مدیریت سایزها */}
+              <Box>
+                <Typography variant="subtitle1">سایزها و موجودی:</Typography>
+                {sizes.map((sz, idx) => (
+                  <Box key={sz} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Typography sx={{ width: 60 }}>{sz}</Typography>
+                    <TextField
+                      type="number"
+                      value={stock[idx]?.count || 0}
+                      onChange={(e) => handleStockChange(idx, e.target.value)}
+                      sx={{ width: 100, mr: 2 }}
+                      inputProps={{ min: 0 }}
+                    />
+                  </Box>
+                ))}
+                <Button variant="outlined" onClick={handleAddSize}>
+                  افزودن سایز جدید
+                </Button>
+              </Box>
             </Stack>
-            <Button type="submit" variant="contained" sx={{ mt: 2 }} fullWidth>
+
+            <Button type="submit" variant="contained" fullWidth sx={{ mt: 3 }}>
               ذخیره تغییرات
             </Button>
           </Box>
