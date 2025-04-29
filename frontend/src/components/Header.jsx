@@ -1,4 +1,4 @@
-// frontend/src/components/Header.jsx
+
 import { useState } from "react";
 import {
   AppBar,
@@ -11,7 +11,11 @@ import {
   MenuItem,
   Box,
 } from "@mui/material";
-import { ShoppingCart, AccountCircle, AdminPanelSettings } from "@mui/icons-material";
+import {
+  ShoppingCart,
+  AccountCircle,
+  AdminPanelSettings,
+} from "@mui/icons-material";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../redux/slices/userSlice";
@@ -23,12 +27,12 @@ export default function Header() {
   const { cartItems } = useSelector((state) => state.cart);
   const { userInfo } = useSelector((state) => state.user);
 
-  // state برای منوی کاربر
+  // منوی کاربر
   const [anchorElUser, setAnchorElUser] = useState(null);
   const handleOpenUserMenu = (e) => setAnchorElUser(e.currentTarget);
   const handleCloseUserMenu = () => setAnchorElUser(null);
 
-  // state برای منوی ادمین
+  // منوی ادمین
   const [anchorElAdmin, setAnchorElAdmin] = useState(null);
   const handleOpenAdminMenu = (e) => setAnchorElAdmin(e.currentTarget);
   const handleCloseAdminMenu = () => setAnchorElAdmin(null);
@@ -67,7 +71,7 @@ export default function Header() {
 
         {userInfo ? (
           <>
-            {/* اگر یوزر ادمین است منوی مدیریت را نمایش بده */}
+            {/* منوی ادمین */}
             {userInfo.isAdmin && (
               <>
                 <IconButton
@@ -107,7 +111,7 @@ export default function Header() {
               </>
             )}
 
-            {/* منوی کاربر عادی */}
+            {/* منوی کاربر */}
             <IconButton
               size="large"
               color="inherit"

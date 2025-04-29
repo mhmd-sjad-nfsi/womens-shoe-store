@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import {
@@ -10,12 +11,13 @@ import {
   TableCell,
   TableBody,
   Paper,
+  Button,
   CircularProgress,
   Alert,
-  Button,
 } from "@mui/material";
 
-export default function AdminOrdersScreen() {
+export default function MyOrdersScreen() {
+  const navigate = useNavigate();
   const { userInfo } = useSelector((state) => state.user);
 
   const [orders, setOrders]   = useState([]);
@@ -23,11 +25,17 @@ export default function AdminOrdersScreen() {
   const [error, setError]     = useState("");
 
   useEffect(() => {
+    if (!userInfo) {
+      navigate("/login");
+      return;
+    }
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-        const { data } = await axios.get("/api/orders", config);
+        const config = {
+          headers: { Authorization: `Bearer ${userInfo.token}` },
+        };
+        const { data } = await axios.get("/api/orders/myorders", config);
         setOrders(data);
       } catch (err) {
         setError(err.response?.data?.message || err.message);
@@ -35,29 +43,29 @@ export default function AdminOrdersScreen() {
         setLoading(false);
       }
     };
-    if (userInfo && userInfo.isAdmin) fetchOrders();
-  }, [userInfo]);
+    fetchOrders();
+  }, [userInfo, navigate]);
 
   return (
     <Container sx={{ mt: 4 }}>
       <Typography variant="h4" gutterBottom>
-        مدیریت سفارش‌ها
+        سفارش‌های من
       </Typography>
 
       {loading ? (
         <CircularProgress />
       ) : error ? (
         <Alert severity="error">{error}</Alert>
+      ) : orders.length === 0 ? (
+        <Alert severity="info">هیچ سفارشی ثبت نکرده‌اید.</Alert>
       ) : (
         <Paper>
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell>آیدی سفارش</TableCell>
-                <TableCell>کاربر</TableCell>
-                <TableCell>تعداد آیتم‌ها</TableCell>
                 <TableCell>تاریخ</TableCell>
-                <TableCell>قیمت کل</TableCell>
+                <TableCell>مجموع</TableCell>
                 <TableCell>پرداخت شده</TableCell>
                 <TableCell>ارسال شده</TableCell>
                 <TableCell>جزئیات</TableCell>
@@ -67,10 +75,6 @@ export default function AdminOrdersScreen() {
               {orders.map((order) => (
                 <TableRow key={order._id}>
                   <TableCell>{order._id}</TableCell>
-                  <TableCell>{order.user.name}</TableCell>
-                  <TableCell>
-                    {order.orderItems.reduce((sum, item) => sum + item.qty, 0)}
-                  </TableCell>
                   <TableCell>
                     {new Date(order.createdAt).toLocaleDateString()}
                   </TableCell>
@@ -89,7 +93,8 @@ export default function AdminOrdersScreen() {
                     <Button
                       variant="outlined"
                       size="small"
-                      href={`/order/${order._id}`}
+                      component={RouterLink}
+                      to={`/order/${order._id}`}
                     >
                       جزئیات
                     </Button>

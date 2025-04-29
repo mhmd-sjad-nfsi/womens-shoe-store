@@ -1,12 +1,13 @@
+
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-// خواندن userInfo از localStorage (اگر قبلاً لاگین کرده باشد)
+// خواندن اطلاعات کاربر از localStorage (در صورتی که لاگین کرده باشد)
 const userInfoFromStorage = localStorage.getItem("userInfo")
   ? JSON.parse(localStorage.getItem("userInfo"))
   : null;
 
-// Thunk برای ورود
+// Thunk برای ورود کاربر
 export const loginUser = createAsyncThunk(
   "user/login",
   async ({ email, password }, { rejectWithValue }) => {
@@ -20,13 +21,35 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-// Thunk برای ثبت‌نام
+// Thunk برای ثبت‌نام کاربر
 export const registerUser = createAsyncThunk(
   "user/register",
   async ({ name, email, password }, { rejectWithValue }) => {
     try {
       const { data } = await axios.post("/api/users/register", { name, email, password });
-      // پس از ثبت‌نام، مستقیم لاگین می‌کنیم
+      localStorage.setItem("userInfo", JSON.stringify(data));
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+// Thunk برای بروزرسانی پروفایل کاربر
+export const updateUserProfile = createAsyncThunk(
+  "user/updateProfile",
+  async ({ name, email, password }, { getState, rejectWithValue }) => {
+    try {
+      const {
+        user: { userInfo },
+      } = getState();
+      const config = {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userInfo.token}`,
+        },
+      };
+      const { data } = await axios.put("/api/users/profile", { name, email, password }, config);
       localStorage.setItem("userInfo", JSON.stringify(data));
       return data;
     } catch (err) {
@@ -41,12 +64,18 @@ const userSlice = createSlice({
     userInfo: userInfoFromStorage,
     loading: false,
     error: null,
+    successUpdate: false,
   },
   reducers: {
     logout: (state) => {
       localStorage.removeItem("userInfo");
       state.userInfo = null;
       state.loading = false;
+      state.error = null;
+      state.successUpdate = false;
+    },
+    resetUpdate: (state) => {
+      state.successUpdate = false;
       state.error = null;
     },
   },
@@ -77,9 +106,24 @@ const userSlice = createSlice({
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // update profile
+      .addCase(updateUserProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successUpdate = false;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        state.userInfo = action.payload;
+        state.successUpdate = true;
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
 
-export const { logout } = userSlice.actions;
+export const { logout, resetUpdate } = userSlice.actions;
 export default userSlice.reducer;
