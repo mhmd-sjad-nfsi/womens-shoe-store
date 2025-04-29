@@ -20,18 +20,16 @@ export default function OrderScreen() {
   const { id: orderId } = useParams();
   const { userInfo } = useSelector((state) => state.user);
 
-  const [order, setOrder] = useState(null);
+  const [order, setOrder]     = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError]     = useState("");
 
   useEffect(() => {
     const fetchOrder = async () => {
       try {
         setLoading(true);
         const config = {
-          headers: {
-            Authorization: `Bearer ${userInfo.token}`,
-          },
+          headers: { Authorization: `Bearer ${userInfo.token}` },
         };
         const { data } = await axios.get(`/api/orders/${orderId}`, config);
         setOrder(data);
@@ -45,8 +43,8 @@ export default function OrderScreen() {
   }, [orderId, userInfo]);
 
   if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (!order) return null;
+  if (error)   return <Alert severity="error">{error}</Alert>;
+  if (!order)  return null;
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
@@ -55,7 +53,7 @@ export default function OrderScreen() {
       </Typography>
 
       <Grid container spacing={4}>
-        {/* بخش آدرس ارسال */}
+        {/* آدرس و وضعیت پرداخت */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6">آدرس ارسال</Typography>
@@ -68,7 +66,7 @@ export default function OrderScreen() {
               وضعیت پرداخت:{" "}
               {order.isPaid ? (
                 <Typography component="span" color="success.main">
-                  پرداخت شده در {new Date(order.paidAt).toLocaleString()}
+                  پرداخته‌شده در {new Date(order.paidAt).toLocaleString()}
                 </Typography>
               ) : (
                 <Typography component="span" color="error.main">
@@ -79,7 +77,7 @@ export default function OrderScreen() {
           </Paper>
         </Grid>
 
-        {/* بخش خلاصه خرید */}
+        {/* خلاصه قیمت‌ها */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6">خلاصه خرید</Typography>
@@ -118,17 +116,17 @@ export default function OrderScreen() {
         </Grid>
       </Grid>
 
-      {/* لیست آیتم‌های سفارش */}
+      {/* لیست آیتم‌های سفارش با نمایش سایز */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h6" gutterBottom>
-          آیتم‌های سفارش
+          آیتم‌های سفارش ({order.orderItems.length})
         </Typography>
         {order.orderItems.length === 0 ? (
-          <Alert severity="info">هیچ آیتمی در سفارش وجود ندارد.</Alert>
+          <Alert severity="info">هیچ آیتمی در این سفارش وجود ندارد.</Alert>
         ) : (
           <Grid container spacing={2}>
             {order.orderItems.map((item) => (
-              <Grid item xs={12} key={item.product}>
+              <Grid item xs={12} key={`${item.product}-${item.size}`}>
                 <Paper sx={{ display: "flex", p: 2, alignItems: "center" }}>
                   <Box
                     component="img"
@@ -150,6 +148,7 @@ export default function OrderScreen() {
                     >
                       {item.name}
                     </Typography>
+                    <Typography>سایز: {item.size}</Typography>
                     <Typography>
                       تعداد: {item.qty} × {item.price.toFixed(2)} تومان
                     </Typography>

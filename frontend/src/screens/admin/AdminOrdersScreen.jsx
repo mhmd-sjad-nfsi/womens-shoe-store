@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { useSelector } from 'react-redux';
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useSelector } from "react-redux";
 import {
   Container,
   Typography,
@@ -13,14 +13,14 @@ import {
   CircularProgress,
   Alert,
   Button,
-} from '@mui/material';
+} from "@mui/material";
 
 export default function AdminOrdersScreen() {
   const { userInfo } = useSelector((state) => state.user);
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -31,7 +31,7 @@ export default function AdminOrdersScreen() {
             Authorization: `Bearer ${userInfo.token}`,
           },
         };
-        const { data } = await axios.get('/api/orders', config);
+        const { data } = await axios.get("/api/orders", config);
         setOrders(data);
       } catch (err) {
         setError(err.response?.data?.message || err.message);
@@ -79,12 +79,12 @@ export default function AdminOrdersScreen() {
                   <TableCell>
                     {order.isPaid
                       ? new Date(order.paidAt).toLocaleDateString()
-                      : '×'}
+                      : "×"}
                   </TableCell>
                   <TableCell>
                     {order.isDelivered
                       ? new Date(order.deliveredAt).toLocaleDateString()
-                      : '×'}
+                      : "×"}
                   </TableCell>
                   <TableCell>
                     <Button
@@ -95,6 +95,7 @@ export default function AdminOrdersScreen() {
                       جزئیات
                     </Button>
                   </TableCell>
+                  <TableCell>{order.orderItems.reduce((a, i) => a + i.qty, 0)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
