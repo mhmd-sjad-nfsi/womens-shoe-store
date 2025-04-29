@@ -6,6 +6,7 @@ import connectDB from './config/db.js';
 import productRoutes from './routes/productRoutes.js';  // بعدا می‌سازیم
 import userRoutes from './routes/userRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 
 
@@ -27,7 +28,7 @@ app.get('/', (req, res) => {
 app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes); 
 app.use('/api/orders', orderRoutes);
-
+app.use('/api/payments', paymentRoutes);
 
 // Error handling (اختیاری در آینده)
 app.use((req, res, next) => {

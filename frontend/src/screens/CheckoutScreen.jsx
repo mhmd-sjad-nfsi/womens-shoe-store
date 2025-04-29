@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createOrder, resetOrder } from '../redux/slices/orderSlice';
+import axios from 'axios';
 import {
   Container,
   Typography,
@@ -19,7 +20,9 @@ export default function CheckoutScreen() {
 
   const cart = useSelector((state) => state.cart.cartItems);
   const { userInfo } = useSelector((state) => state.user);
-  const { order, success, loading, error } = useSelector((state) => state.orderCreate);
+  const { order, success, loading, error } = useSelector(
+    (state) => state.orderCreate
+  );
 
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
@@ -42,9 +45,11 @@ export default function CheckoutScreen() {
     }
   }, [userInfo, success, navigate, order, dispatch]);
 
-  const submitHandler = (e) => {
+  const submitHandler = async (e) => {
     e.preventDefault();
-    dispatch(createOrder({
+
+    // 1) ایجاد سفارش در بک‌اند
+    const orderData = {
       orderItems: cart,
       shippingAddress: { address, city, postalCode, country },
       paymentMethod,
@@ -52,68 +57,129 @@ export default function CheckoutScreen() {
       shippingPrice,
       taxPrice,
       totalPrice,
-    }));
+    };
+
+    try {
+      // dispatch و unwrap برای دریافت پاسخ
+      const createdOrder = await dispatch(createOrder(orderData)).unwrap();
+
+      // 2) اگر زرین‌پال انتخاب شده، درخواست پرداخت بفرست و ری‌دایرکت کن
+      if (paymentMethod === 'ZarinPal') {
+        const { data } = await axios.post(
+          '/api/payments/zarinpal',
+          {
+            orderId: createdOrder._id,
+            amount: Math.round(totalPrice * 10), // تبدیل تومان به ریال *10
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${userInfo.token}`,
+            },
+          }
+        );
+        window.location.href = data.paymentUrl;
+      }
+      // در غیر این صورت (PayPal یا Cash)، ریدایرکت به صفحه سفارش
+      else {
+        navigate(`/order/${createdOrder._id}`);
+      }
+    } catch (err) {
+      // خطاها در state orderSlice مدیریت می‌شوند
+      console.error('Order creation failed:', err);
+    }
   };
 
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom>نهایی‌سازی سفارش</Typography>
+      <Typography variant="h4" gutterBottom>
+        نهایی‌سازی سفارش
+      </Typography>
       <Grid container spacing={4}>
         {/* آدرس */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>آدرس ارسال</Typography>
+            <Typography variant="h6" gutterBottom>
+              آدرس ارسال
+            </Typography>
             <form onSubmit={submitHandler}>
               <TextField
                 label="آدرس"
-                fullWidth required margin="normal"
-                value={address} onChange={(e) => setAddress(e.target.value)}
+                fullWidth
+                required
+                margin="normal"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
               />
               <TextField
                 label="شهر"
-                fullWidth required margin="normal"
-                value={city} onChange={(e) => setCity(e.target.value)}
+                fullWidth
+                required
+                margin="normal"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
               />
               <TextField
                 label="کد پستی"
-                fullWidth required margin="normal"
-                value={postalCode} onChange={(e) => setPostalCode(e.target.value)}
+                fullWidth
+                required
+                margin="normal"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
               />
               <TextField
                 label="کشور"
-                fullWidth required margin="normal"
-                value={country} onChange={(e) => setCountry(e.target.value)}
+                fullWidth
+                required
+                margin="normal"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
               />
               <TextField
                 label="روش پرداخت"
-                fullWidth select margin="normal"
+                fullWidth
+                select
+                margin="normal"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 SelectProps={{ native: true }}
               >
                 <option value="PayPal">PayPal</option>
                 <option value="Cash">پرداخت در محل</option>
+                <option value="ZarinPal">زرین‌پال</option>
               </TextField>
+
               {loading ? (
                 <CircularProgress />
               ) : error ? (
                 <Alert severity="error">{error}</Alert>
               ) : (
-                <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  sx={{ mt: 2 }}
+                >
                   ثبت سفارش — {totalPrice.toFixed(2)} تومان
                 </Button>
               )}
             </form>
           </Paper>
         </Grid>
+
         {/* خلاصه سفارش */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>خلاصه خرید</Typography>
+            <Typography variant="h6" gutterBottom>
+              خلاصه خرید
+            </Typography>
             <Typography>آیتم‌ها: {itemsPrice.toFixed(2)} تومان</Typography>
-            <Typography>هزینه ارسال: {shippingPrice.toFixed(2)} تومان</Typography>
+            <Typography>
+              هزینه ارسال: {shippingPrice.toFixed(2)} تومان
+            </Typography>
             <Typography>مالیات: {taxPrice.toFixed(2)} تومان</Typography>
-            <Typography fontWeight="bold">مجموع: {totalPrice.toFixed(2)} تومان</Typography>
+            <Typography fontWeight="bold">
+              مجموع: {totalPrice.toFixed(2)} تومان
+            </Typography>
           </Paper>
         </Grid>
       </Grid>
