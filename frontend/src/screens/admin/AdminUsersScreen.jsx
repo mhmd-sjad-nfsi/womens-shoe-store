@@ -26,6 +26,14 @@ export default function AdminUsersScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
 
+  useEffect(() => {
+    if (!userInfo || !userInfo.isAdmin) {
+      navigate('/login');
+      return;
+    }
+    fetchUsers();
+  }, [userInfo, navigate]);
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -50,11 +58,6 @@ export default function AdminUsersScreen() {
       }
     }
   };
-
-  useEffect(() => {
-    if (userInfo && userInfo.isAdmin) fetchUsers();
-    else navigate('/login');
-  }, [userInfo, navigate]);
 
   return (
     <Container sx={{ mt: 4 }}>

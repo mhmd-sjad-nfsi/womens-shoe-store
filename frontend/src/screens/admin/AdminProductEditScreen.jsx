@@ -21,7 +21,7 @@ export default function AdminProductEditScreen() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
-  const [setSuccess] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const [name, setName]         = useState("");
   const [price, setPrice]       = useState(0);
@@ -33,6 +33,10 @@ export default function AdminProductEditScreen() {
   const [stock, setStock]       = useState([]);  // [{size, count},...]
 
   useEffect(() => {
+    if (!userInfo || !userInfo.isAdmin) {
+      navigate("/login");
+      return;
+    }
     const fetchProduct = async () => {
       try {
         setLoading(true);
@@ -52,8 +56,7 @@ export default function AdminProductEditScreen() {
         setLoading(false);
       }
     };
-    if (userInfo && userInfo.isAdmin) fetchProduct();
-    else navigate("/login");
+    fetchProduct();
   }, [productId, userInfo, navigate]);
 
   const submitHandler = async (e) => {
@@ -77,7 +80,6 @@ export default function AdminProductEditScreen() {
     }
   };
 
-  // افزودن سایز جدید
   const handleAddSize = () => {
     const newSize = Number(prompt("سایز جدید را وارد کنید:"));
     if (newSize && !sizes.includes(newSize)) {
@@ -86,7 +88,6 @@ export default function AdminProductEditScreen() {
     }
   };
 
-  // تغییر موجودی هر سایز
   const handleStockChange = (idx, newCount) => {
     const updated = [...stock];
     updated[idx].count = Number(newCount);
@@ -106,6 +107,9 @@ export default function AdminProductEditScreen() {
         ) : (
           <Box component="form" onSubmit={submitHandler}>
             <Stack spacing={2}>
+              {success && (
+                <Alert severity="success">محصول با موفقیت بروزرسانی شد</Alert>
+              )}
               <TextField label="نام" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
               <TextField label="قیمت" type="number" value={price} onChange={(e) => setPrice(e.target.value)} fullWidth />
               <TextField label="دسته" value={category} onChange={(e) => setCategory(e.target.value)} fullWidth />

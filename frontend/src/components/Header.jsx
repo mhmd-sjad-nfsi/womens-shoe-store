@@ -1,5 +1,6 @@
+// frontend/src/components/Header.jsx
 
-import { useState } from "react";
+import { useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -9,16 +10,18 @@ import {
   Badge,
   Menu,
   MenuItem,
-  Box,
-} from "@mui/material";
+} from '@mui/material';
 import {
   ShoppingCart,
   AccountCircle,
   AdminPanelSettings,
-} from "@mui/icons-material";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { logout } from "../redux/slices/userSlice";
+  Brightness4,
+  Brightness7,
+} from '@mui/icons-material';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { logout } from '../redux/slices/userSlice';
+import { toggleMode } from '../redux/slices/uiSlice';
 
 export default function Header() {
   const dispatch = useDispatch();
@@ -26,6 +29,8 @@ export default function Header() {
 
   const { cartItems } = useSelector((state) => state.cart);
   const { userInfo } = useSelector((state) => state.user);
+  const mode = useSelector((state) => state.ui.mode);
+  const isDark = mode === 'dark';
 
   // منوی کاربر
   const [anchorElUser, setAnchorElUser] = useState(null);
@@ -40,7 +45,7 @@ export default function Header() {
   const logoutHandler = () => {
     dispatch(logout());
     handleCloseUserMenu();
-    navigate("/");
+    navigate('/');
   };
 
   return (
@@ -51,10 +56,19 @@ export default function Header() {
           variant="h6"
           component={RouterLink}
           to="/"
-          sx={{ flexGrow: 1, textDecoration: "none", color: "inherit" }}
+          sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}
         >
           فروشگاه کفش زنانه
         </Typography>
+
+        {/* سوییچ تم */}
+        <IconButton
+          onClick={() => dispatch(toggleMode())}
+          color="inherit"
+          sx={{ mr: 1 }}
+        >
+          {isDark ? <Brightness7 /> : <Brightness4 />}
+        </IconButton>
 
         {/* آیکون سبد خرید */}
         <IconButton
@@ -148,7 +162,7 @@ export default function Header() {
               color="inherit"
               component={RouterLink}
               to="/login"
-              sx={{ textTransform: "none", mr: 1 }}
+              sx={{ textTransform: 'none', mr: 1 }}
             >
               ورود
             </Button>
@@ -156,7 +170,7 @@ export default function Header() {
               color="inherit"
               component={RouterLink}
               to="/register"
-              sx={{ textTransform: "none" }}
+              sx={{ textTransform: 'none' }}
             >
               ثبت‌نام
             </Button>

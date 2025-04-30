@@ -2,7 +2,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Provider } from 'react-redux';
+import { Provider, useSelector } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { CacheProvider } from '@emotion/react';
 import createCache from '@emotion/cache';
@@ -11,25 +11,35 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 
 import App from './App.jsx';
 import store from './redux/store.js';
-import theme from './theme/index.js';
+import { createAppTheme } from './theme/index.js';
 
-// کش برای RTL
+// Emotion cache برای RTL
 const cacheRtl = createCache({
   key: 'muirtl',
   stylisPlugins: [stylisRTLPlugin],
 });
 
+function Root() {
+  // خواندن حالت تم از Redux
+  const mode = useSelector((state) => state.ui.mode);
+  const theme = createAppTheme(mode);
+
+  return (
+    <CacheProvider value={cacheRtl}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ThemeProvider>
+    </CacheProvider>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Provider store={store}>
-      <CacheProvider value={cacheRtl}>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </ThemeProvider>
-      </CacheProvider>
+      <Root />
     </Provider>
   </React.StrictMode>
 );

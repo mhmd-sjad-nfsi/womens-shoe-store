@@ -27,6 +27,14 @@ export default function AdminProductsScreen() {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
 
+  useEffect(() => {
+    if (!userInfo || !userInfo.isAdmin) {
+      navigate('/login');
+      return;
+    }
+    fetchProducts();
+  }, [userInfo, navigate]);
+
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -42,14 +50,6 @@ export default function AdminProductsScreen() {
     }
   };
 
-  useEffect(() => {
-    if (userInfo && userInfo.isAdmin) {
-      fetchProducts();
-    } else {
-      navigate('/login');
-    }
-  }, [userInfo, navigate]);
-
   const createHandler = async () => {
     if (window.confirm('آیا می‌خواهید یک محصول جدید ایجاد کنید؟')) {
       try {
@@ -57,7 +57,8 @@ export default function AdminProductsScreen() {
         const config = {
           headers: { Authorization: `Bearer ${userInfo.token}` },
         };
-        const { data } = await axios.post('/api/products', {}, config);
+        // اگر کنترلر نیاز به body دارد، می‌توانید بدنهٔ پیش‌فرض ارسال کنید
+        const { data } = await axios.post('/api/products', { sizes: [], colors: [] }, config);
         navigate(`/admin/product/${data._id}/edit`);
       } catch (err) {
         setError(err.response?.data?.message || err.message);
@@ -106,36 +107,39 @@ export default function AdminProductsScreen() {
                 <TableCell>قیمت</TableCell>
                 <TableCell>دسته</TableCell>
                 <TableCell>برند</TableCell>
-                <TableCell>موجودی</TableCell>
+                <TableCell>موجودی کل</TableCell>
                 <TableCell>عملیات</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {products.map((p) => (
-                <TableRow key={p._id}>
-                  <TableCell>{p._id}</TableCell>
-                  <TableCell>{p.name}</TableCell>
-                  <TableCell>{p.price.toFixed(2)}</TableCell>
-                  <TableCell>{p.category}</TableCell>
-                  <TableCell>{p.brand}</TableCell>
-                  <TableCell>{p.countInStock}</TableCell>
-                  <TableCell>
-                    <IconButton
-                      component={RouterLink}
-                      to={`/admin/product/${p._id}/edit`}
-                      color="primary"
-                    >
-                      <Edit />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => deleteHandler(p._id)}
-                      color="error"
-                    >
-                      <Delete />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {products.map((p) => {
+                const totalStock = p.stock.reduce((sum, s) => sum + s.count, 0);
+                return (
+                  <TableRow key={p._id}>
+                    <TableCell>{p._id}</TableCell>
+                    <TableCell>{p.name}</TableCell>
+                    <TableCell>{p.price.toFixed(2)}</TableCell>
+                    <TableCell>{p.category}</TableCell>
+                    <TableCell>{p.brand}</TableCell>
+                    <TableCell>{totalStock}</TableCell>
+                    <TableCell>
+                      <IconButton
+                        component={RouterLink}
+                        to={`/admin/product/${p._id}/edit`}
+                        color="primary"
+                      >
+                        <Edit />
+                      </IconButton>
+                      <IconButton
+                        onClick={() => deleteHandler(p._id)}
+                        color="error"
+                      >
+                        <Delete />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </Paper>

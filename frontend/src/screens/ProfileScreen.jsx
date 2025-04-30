@@ -88,5 +88,5 @@ export default function ProfileScreen() {
         </Button>
       </Stack>
     </Container>
-);
+  );
 }
