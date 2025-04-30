@@ -47,10 +47,18 @@ export default function CheckoutScreen() {
 
   const submitHandler = async (e) => {
     e.preventDefault();
-
-    // 1) ایجاد سفارش در بک‌اند
+  
+    const orderItems = cart.map((item) => ({
+      name: item.name,
+      qty: item.qty,
+      size: item.size,
+      image: item.image,
+      price: item.price,
+      product: item._id,
+    }));
+  
     const orderData = {
-      orderItems: cart,
+      orderItems,
       shippingAddress: { address, city, postalCode, country },
       paymentMethod,
       itemsPrice,
@@ -58,18 +66,16 @@ export default function CheckoutScreen() {
       taxPrice,
       totalPrice,
     };
-
+  
     try {
-      // dispatch و unwrap برای دریافت پاسخ
       const createdOrder = await dispatch(createOrder(orderData)).unwrap();
-
-      // 2) اگر زرین‌پال انتخاب شده، درخواست پرداخت بفرست و ری‌دایرکت کن
+  
       if (paymentMethod === 'ZarinPal') {
         const { data } = await axios.post(
           '/api/payments/zarinpal',
           {
             orderId: createdOrder._id,
-            amount: Math.round(totalPrice * 10), // تبدیل تومان به ریال *10
+            amount: Math.round(totalPrice * 10),
           },
           {
             headers: {
@@ -78,16 +84,14 @@ export default function CheckoutScreen() {
           }
         );
         window.location.href = data.paymentUrl;
-      }
-      // در غیر این صورت (PayPal یا Cash)، ریدایرکت به صفحه سفارش
-      else {
+      } else {
         navigate(`/order/${createdOrder._id}`);
       }
     } catch (err) {
-      // خطاها در state orderSlice مدیریت می‌شوند
       console.error('Order creation failed:', err);
     }
   };
+  
 
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
