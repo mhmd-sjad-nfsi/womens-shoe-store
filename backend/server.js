@@ -1,42 +1,54 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
+// backend/server.js
 
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
 import connectDB from './config/db.js';
-import productRoutes from './routes/productRoutes.js';  // بعدا می‌سازیم
+
+// Routes
 import userRoutes from './routes/userRoutes.js';
+import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 
-
-
 dotenv.config();
-connectDB();
 
 const app = express();
 
+// Connect to MongoDB
+connectDB();
+
 // Middleware
 app.use(cors());
-app.use(express.json());
-
-// Test Route
-app.get('/', (req, res) => {
-  res.send('سلام! سرور با موفقیت راه‌اندازی شد.');
-});
+app.use(express.json()); // for parsing application/json
 
 // API Routes
+app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/users', userRoutes); 
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 
-// Error handling (اختیاری در آینده)
+// Serve static uploads if you have any (مثلاً برای عکس‌ها)
+// app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
+
+// Error handling middleware
 app.use((req, res, next) => {
-  res.status(404).json({ message: 'مسیر پیدا نشد' });
+  const error = new Error(`مسیر ${req.originalUrl} پیدا نشد`);
+  res.status(404);
+  next(error);
 });
 
-// Start Server
-const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.use((err, req, res, next) => {
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  res.status(statusCode);
+  res.json({
+    message: err.message,
+    // stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+  });
 });
+
+// Start server
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on http://localhost:${PORT}`)
+);
