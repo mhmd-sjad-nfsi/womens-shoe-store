@@ -1,55 +1,66 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 import { protect } from '../middleware/authMiddleware.js';
+import axios from 'axios';
 
 const router = express.Router();
 
-/**
- * @desc   ایجاد درخواست پرداخت زرین‌پال
- * @route  POST /api/payments/zarinpal
- * @access Private
- */
+const ZP_BASE = 'https://sandbox.zarinpal.com/pg/rest/WebGate'; 
+
+// درخواست پرداخت
+// POST /api/payments/zarinpal
 router.post(
   '/zarinpal',
   protect,
   asyncHandler(async (req, res) => {
-    const { orderId, amount } = req.body;
+    const { orderId, amount } = req.body; 
+    const merchant_id = process.env.ZP_MERCHANT_ID;
+    const callback_url = `${process.env.ZP_CALLBACK_URL}?orderId=${orderId}`;
 
-    // در اینجا منطق ساخت درخواست به زرین‌پال قرار می‌گیرد.
-    // فعلاً یک URL placeholder برمی‌گردانیم:
-    const callbackUrl = `https://your-domain.com/api/payments/zarinpal/callback`; 
-    // اگر نیاز بود بعداً orderId و token را به callbackUrl اضافه کنید.
-
-    // جواب را به کلاینت می‌دهیم:
-    res.json({
-      paymentUrl: 'https://next-step-for-zarinpal.example.com/XXXXXXXXXX', // placeholder
-      callbackUrl,
+    const { data } = await axios.post(`${ZP_BASE}/PaymentRequest.json`, {
+      MerchantID: merchant_id,
+      Amount: amount,
+      Description: `پرداخت سفارش ${orderId}`,
+      CallbackURL: callback_url,
     });
+
+    if (data.Status === 100) {
+      // ارسال کاربر به وب‌گیت زرین‌پال
+      return res.json({
+        paymentUrl: `https://sandbox.zarinpal.com/pg/StartPay/${data.Authority}`,
+      });
+    }
+
+    res.status(400).json({ message: 'خطا در ایجاد درخواست پرداخت' });
   })
 );
 
-/**
- * @desc   هندل کردن callback زرین‌پال
- * @route  GET /api/payments/zarinpal/callback
- * @access Public (زرین‌پال به آن دسترسی دارد)
- */
+// هندل callback
+// GET /api/payments/zarinpal/callback
 router.get(
   '/zarinpal/callback',
   asyncHandler(async (req, res) => {
-    // پارامترهای تراکنش را از query بخوانید
-    const { Authority, Status, orderId } = req.query;
+    const { Status, Authority, orderId } = req.query;
 
-    // اینجا منطق Verify تراکنش (درستی پرداخت) قرار می‌گیرد.
-    // برای شروع، فرض می‌کنیم موفقیت‌آمیز بوده:
-    if (Status === 'OK') {
-      // مثال: در ادامه می‌توانید order را در دیتابیس isPaid=true کنید
+    if (Status !== 'OK') {
+      return res.redirect(`/checkout?paymentError=پرداخت ناموفق بود`);
+    }
+
+    const merchant_id = process.env.ZP_MERCHANT_ID;
+    // Verify
+    const { data } = await axios.post(`${ZP_BASE}/PaymentVerification.json`, {
+      MerchantID: merchant_id,
+      Authority,
+      Amount: req.query.amount, // مبلغ باید همان مبلغ پرداخت باشد
+    });
+
+    if (data.Status === 100) {
+      // می‌توانید اینجا سفارش را isPaid=true کنید
       // await Order.findByIdAndUpdate(orderId, { isPaid: true, paidAt: Date.now() });
 
-      // کاربر را به صفحه نهایی تراکنش (سپس OrderScreen) هدایت کنید
-      res.redirect(`/order/${orderId}`);
+      return res.redirect(`/order/${orderId}`);
     } else {
-      // پرداخت ناموفق
-      res.redirect(`/checkout?paymentError=پرداخت ناموفق بود`);
+      return res.redirect(`/checkout?paymentError=پرداخت تأیید نشد`);
     }
   })
 );

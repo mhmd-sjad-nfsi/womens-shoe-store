@@ -12,11 +12,15 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function CheckoutScreen() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // پارس کردن پیام خطای پرداخت از کوئری‌پارامتر
+  const paymentError = new URLSearchParams(location.search).get('paymentError');
 
   const cart = useSelector((state) => state.cart.cartItems);
   const { userInfo } = useSelector((state) => state.user);
@@ -47,7 +51,7 @@ export default function CheckoutScreen() {
 
   const submitHandler = async (e) => {
     e.preventDefault();
-  
+
     const orderItems = cart.map((item) => ({
       name: item.name,
       qty: item.qty,
@@ -56,7 +60,7 @@ export default function CheckoutScreen() {
       price: item.price,
       product: item._id,
     }));
-  
+
     const orderData = {
       orderItems,
       shippingAddress: { address, city, postalCode, country },
@@ -66,16 +70,17 @@ export default function CheckoutScreen() {
       taxPrice,
       totalPrice,
     };
-  
+
     try {
       const createdOrder = await dispatch(createOrder(orderData)).unwrap();
-  
+
       if (paymentMethod === 'ZarinPal') {
         const { data } = await axios.post(
           '/api/payments/zarinpal',
           {
             orderId: createdOrder._id,
-            amount: Math.round(totalPrice * 10),
+            // تبدیل تومان به ریال برای زرین‌پال
+            amount: Math.round(createdOrder.totalPrice * 10),
           },
           {
             headers: {
@@ -83,7 +88,8 @@ export default function CheckoutScreen() {
             },
           }
         );
-        window.location.href = data.paymentUrl;
+        // هدایت با replace تا کاربر نتواند با back‌ برگردد
+        window.location.replace(data.paymentUrl);
       } else {
         navigate(`/order/${createdOrder._id}`);
       }
@@ -91,13 +97,20 @@ export default function CheckoutScreen() {
       console.error('Order creation failed:', err);
     }
   };
-  
 
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
       <Typography variant="h4" gutterBottom>
         نهایی‌سازی سفارش
       </Typography>
+
+      {/* نمایش خطای پرداخت زرین‌پال */}
+      {paymentError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          پرداخت ناموفق بود. لطفاً مجدداً تلاش کنید.
+        </Alert>
+      )}
+
       <Grid container spacing={4}>
         {/* آدرس */}
         <Grid item xs={12} md={6}>
