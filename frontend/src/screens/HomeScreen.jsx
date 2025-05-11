@@ -11,9 +11,14 @@ import {
   Typography,
   Skeleton,
 } from "@mui/material";
+import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard.jsx";
+import Paginate from "../components/Paginate.jsx";
 
 export default function HomeScreen() {
+  const [searchParams] = useSearchParams();
+  const pageNumber = Number(searchParams.get("pageNumber")) || 1;
+
   const [products, setProducts] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -22,15 +27,34 @@ export default function HomeScreen() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("همه");
 
-  const categories = ["همه", "اسپرت", "دویدن", "مجلسی", "چکمه", "صندل", "روزمره", "پیاده‌روی", "رسمی", "طبیعت‌گردی", "ورزشی"];
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+
+  const categories = [
+    "همه",
+    "اسپرت",
+    "دویدن",
+    "مجلسی",
+    "چکمه",
+    "صندل",
+    "روزمره",
+    "پیاده‌روی",
+    "رسمی",
+    "طبیعت‌گردی",
+    "ورزشی",
+  ];
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const { data } = await axios.get("/api/products");
-        setProducts(data);
-        setFiltered(data);
+        const { data } = await axios.get(
+          `/api/products?pageNumber=${pageNumber}`
+        );
+        setProducts(data.products);
+        setFiltered(data.products);
+        setPage(data.page);
+        setPages(data.pages);
       } catch (err) {
         setError(err.response?.data?.message || err.message);
       } finally {
@@ -38,7 +62,7 @@ export default function HomeScreen() {
       }
     };
     fetchProducts();
-  }, []);
+  }, [pageNumber]);
 
   // فیلتر بر اساس جستجو و دسته‌بندی
   useEffect(() => {
@@ -50,7 +74,9 @@ export default function HomeScreen() {
 
     if (searchTerm) {
       const term = searchTerm.trim().toLowerCase();
-      temp = temp.filter((p) => p.name.toLowerCase().includes(term));
+      temp = temp.filter((p) =>
+        p.name.toLowerCase().includes(term)
+      );
     }
 
     setFiltered(temp);
@@ -71,7 +97,12 @@ export default function HomeScreen() {
               InputProps={{ sx: { bgcolor: "background.paper" } }}
             />
           </Grid>
-          <Grid item xs={12} md={6} sx={{ textAlign: { xs: "left", md: "right" } }}>
+          <Grid
+            item
+            xs={12}
+            md={6}
+            sx={{ textAlign: { xs: "left", md: "right" } }}
+          >
             {categories.map((cat) => (
               <Chip
                 key={cat}
@@ -91,7 +122,11 @@ export default function HomeScreen() {
         <Grid container spacing={3}>
           {[...Array(8)].map((_, idx) => (
             <Grid item xs={12} sm={6} md={4} lg={3} key={idx}>
-              <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 2 }} />
+              <Skeleton
+                variant="rectangular"
+                height={300}
+                sx={{ borderRadius: 2 }}
+              />
               <Skeleton width="60%" sx={{ mt: 1 }} />
               <Skeleton width="40%" />
             </Grid>
@@ -100,17 +135,32 @@ export default function HomeScreen() {
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : filtered.length === 0 ? (
-        <Typography variant="h6" align="center" sx={{ mt: 4 }}>
+        <Typography
+          variant="h6"
+          align="center"
+          sx={{ mt: 4 }}
+        >
           محصولی یافت نشد
         </Typography>
       ) : (
-        <Grid container spacing={3} justifyContent="center">
-          {filtered.map((prod) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={prod._id}>
-              <ProductCard product={prod} />
-            </Grid>
-          ))}
-        </Grid>
+        <>
+          <Grid container spacing={3} justifyContent="center">
+            {filtered.map((prod) => (
+              <Grid
+                item
+                xs={12}
+                sm={6}
+                md={4}
+                lg={3}
+                key={prod._id}
+              >
+                <ProductCard product={prod} />
+              </Grid>
+            ))}
+          </Grid>
+          {/* کامپوننت صفحه‌بندی */}
+          <Paginate page={page} pages={pages} />
+        </>
       )}
     </Container>
   );
