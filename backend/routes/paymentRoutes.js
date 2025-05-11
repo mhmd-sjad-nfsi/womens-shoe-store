@@ -2,30 +2,32 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 import { protect } from '../middleware/authMiddleware.js';
 import axios from 'axios';
+import Order from '../models/orderModel.js';   // ← اضافه شد
 
 const router = express.Router();
+const ZP_BASE = 'https://sandbox.zarinpal.com/pg/rest/WebGate';
 
-const ZP_BASE = 'https://sandbox.zarinpal.com/pg/rest/WebGate'; 
-
-// درخواست پرداخت
 // POST /api/payments/zarinpal
 router.post(
   '/zarinpal',
   protect,
   asyncHandler(async (req, res) => {
-    const { orderId, amount } = req.body; 
+    const { orderId, amount } = req.body;
     const merchant_id = process.env.ZP_MERCHANT_ID;
     const callback_url = `${process.env.ZP_CALLBACK_URL}?orderId=${orderId}`;
 
-    const { data } = await axios.post(`${ZP_BASE}/PaymentRequest.json`, {
-      MerchantID: merchant_id,
-      Amount: amount,
-      Description: `پرداخت سفارش ${orderId}`,
-      CallbackURL: callback_url,
-    });
+    const { data } = await axios.post(
+      `${ZP_BASE}/PaymentRequest.json`,
+      {
+        MerchantID: merchant_id,
+        Amount: amount,
+        Description: `پرداخت سفارش ${orderId}`,
+        CallbackURL: callback_url,
+      },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
 
     if (data.Status === 100) {
-      // ارسال کاربر به وب‌گیت زرین‌پال
       return res.json({
         paymentUrl: `https://sandbox.zarinpal.com/pg/StartPay/${data.Authority}`,
       });
@@ -35,7 +37,6 @@ router.post(
   })
 );
 
-// هندل callback
 // GET /api/payments/zarinpal/callback
 router.get(
   '/zarinpal/callback',
@@ -46,17 +47,30 @@ router.get(
       return res.redirect(`/checkout?paymentError=پرداخت ناموفق بود`);
     }
 
+    // پیدا کردن سفارش و محاسبه مبلغ ریالی
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.redirect(`/checkout?paymentError=سفارش یافت نشد`);
+    }
     const merchant_id = process.env.ZP_MERCHANT_ID;
+    const amount = Math.round(order.totalPrice * 10); // تومان→ریال
+
     // Verify
-    const { data } = await axios.post(`${ZP_BASE}/PaymentVerification.json`, {
-      MerchantID: merchant_id,
-      Authority,
-      Amount: req.query.amount, // مبلغ باید همان مبلغ پرداخت باشد
-    });
+    const { data } = await axios.post(
+      `${ZP_BASE}/PaymentVerification.json`,
+      {
+        MerchantID: merchant_id,
+        Authority,
+        Amount: amount,
+      },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
 
     if (data.Status === 100) {
-      // می‌توانید اینجا سفارش را isPaid=true کنید
-      // await Order.findByIdAndUpdate(orderId, { isPaid: true, paidAt: Date.now() });
+      // علامت‌گذاری سفارش به‌عنوان پرداخت‌شده
+      order.isPaid = true;
+      order.paidAt = Date.now();
+      await order.save();
 
       return res.redirect(`/order/${orderId}`);
     } else {

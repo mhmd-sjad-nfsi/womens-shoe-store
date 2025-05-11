@@ -1,15 +1,18 @@
-import { Pagination, Stack } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+// frontend/src/components/Paginate.jsx
 import React from 'react';
+import { Pagination, PaginationItem, Stack } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 
 export default function Paginate({ page, pages, isAdmin = false }) {
-  return pages > 1 ? (
+  if (pages <= 1) return null;
+
+  return (
     <Stack spacing={2} sx={{ my: 4, alignItems: 'center' }}>
       <Pagination
         count={pages}
         page={page}
         renderItem={(item) => (
-          <Pagination.Item
+          <PaginationItem
             component={RouterLink}
             to={
               !isAdmin
@@ -21,5 +24,5 @@ export default function Paginate({ page, pages, isAdmin = false }) {
         )}
       />
     </Stack>
-  ) : null;
+  );
 }
