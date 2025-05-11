@@ -15,3 +15,5 @@ yarn-error.log
 # Output of build
 dist/
 build/
+/uploads
+uploads/
