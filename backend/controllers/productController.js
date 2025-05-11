@@ -96,3 +96,41 @@ export const deleteProduct = asyncHandler(async (req, res) => {
   await product.remove();
   res.json({ message: 'محصول با موفقیت حذف شد' });
 });
+// @desc    Create new review
+// @route   POST /api/products/:id/reviews
+// @access  Private
+export const createProductReview = asyncHandler(async (req, res) => {
+  const { rating, comment } = req.body;
+  const product = await Product.findById(req.params.id);
+
+  if (!product) {
+    res.status(404);
+    throw new Error('محصول پیدا نشد');
+  }
+
+  // مطمئن شوید کاربر قبلاً نظر نداده
+  const alreadyReviewed = product.reviews.find(
+    (r) => r.user.toString() === req.user._id.toString()
+  );
+  if (alreadyReviewed) {
+    res.status(400);
+    throw new Error('شما قبلاً نظر خود را ثبت کرده‌اید');
+  }
+
+  const review = {
+    user: req.user._id,
+    name: req.user.name,
+    rating: Number(rating),
+    comment,
+  };
+
+  product.reviews.push(review);
+  product.numReviews = product.reviews.length;
+  product.rating =
+    product.reviews.reduce((acc, item) => item.rating + acc, 0) /
+    product.reviews.length;
+
+  await product.save();
+  res.status(201).json({ message: 'نظر با موفقیت ثبت شد' });
+});
+
