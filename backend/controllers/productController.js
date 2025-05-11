@@ -133,4 +133,33 @@ export const createProductReview = asyncHandler(async (req, res) => {
   await product.save();
   res.status(201).json({ message: 'نظر با موفقیت ثبت شد' });
 });
+// @desc    Delete a review
+// @route   DELETE /api/products/:id/reviews/:reviewId
+// @access  Private/Admin
+export const deleteReview = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  if (!product) {
+    res.status(404);
+    throw new Error('محصول پیدا نشد');
+  }
+
+  const reviewIndex = product.reviews.findIndex(
+    (r) => r._id.toString() === req.params.reviewId
+  );
+  if (reviewIndex === -1) {
+    res.status(404);
+    throw new Error('نظر پیدا نشد');
+  }
+
+  // حذف نقد
+  product.reviews.splice(reviewIndex, 1);
+  product.numReviews = product.reviews.length;
+  product.rating =
+    product.numReviews > 0
+      ? product.reviews.reduce((acc, item) => item.rating + acc, 0) / product.numReviews
+      : 0;
+
+  await product.save();
+  res.json({ message: 'نظر با موفقیت حذف شد' });
+});
 
