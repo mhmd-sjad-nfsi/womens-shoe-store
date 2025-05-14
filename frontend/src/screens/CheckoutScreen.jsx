@@ -1,3 +1,5 @@
+// frontend/src/screens/CheckoutScreen.jsx
+
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createOrder, resetOrder } from '../redux/slices/orderSlice';
@@ -10,21 +12,22 @@ import {
   Grid,
   Paper,
   CircularProgress,
-  Alert,
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useSnackbar } from 'notistack';
 
 export default function CheckoutScreen() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const { enqueueSnackbar } = useSnackbar();
 
-  // پارس کردن پیام خطای پرداخت از کوئری‌پارامتر
+  // پیام خطای پرداخت زرین‌پال
   const paymentError = new URLSearchParams(location.search).get('paymentError');
 
   const cart = useSelector((state) => state.cart.cartItems);
   const { userInfo } = useSelector((state) => state.user);
-  const { order, success, loading, error } = useSelector(
+  const { order, success, loading: orderLoading, error: orderError } = useSelector(
     (state) => state.orderCreate
   );
 
@@ -42,12 +45,26 @@ export default function CheckoutScreen() {
   useEffect(() => {
     if (!userInfo) {
       navigate('/login?redirect=/checkout');
+      return;
     }
+    // نمایش خطای پرداخت ناموفق زرین‌پال
+    if (paymentError) {
+      enqueueSnackbar('پرداخت ناموفق بود. لطفاً مجدداً تلاش کنید.', {
+        variant: 'error',
+      });
+    }
+  }, [userInfo, navigate, paymentError, enqueueSnackbar]);
+
+  useEffect(() => {
     if (success) {
+      enqueueSnackbar('سفارش شما با موفقیت ثبت شد', { variant: 'success' });
       navigate(`/order/${order._id}`);
       dispatch(resetOrder());
+    } else if (orderError) {
+      // خطای ایجاد سفارش
+      enqueueSnackbar(orderError, { variant: 'error' });
     }
-  }, [userInfo, success, navigate, order, dispatch]);
+  }, [success, orderError, order, navigate, dispatch, enqueueSnackbar]);
 
   const submitHandler = async (e) => {
     e.preventDefault();
@@ -79,8 +96,7 @@ export default function CheckoutScreen() {
           '/api/payments/zarinpal',
           {
             orderId: createdOrder._id,
-            // تبدیل تومان به ریال برای زرین‌پال
-            amount: Math.round(createdOrder.totalPrice * 10),
+            amount: Math.round(createdOrder.totalPrice * 10), // تومان → ریال
           },
           {
             headers: {
@@ -88,13 +104,15 @@ export default function CheckoutScreen() {
             },
           }
         );
-        // هدایت با replace تا کاربر نتواند با back‌ برگردد
         window.location.replace(data.paymentUrl);
       } else {
+        // برای روش‌های دیگر، navigate می‌کند و توست موفقیت در useEffect نمایش داده می‌شود
         navigate(`/order/${createdOrder._id}`);
       }
     } catch (err) {
-      console.error('Order creation failed:', err);
+      enqueueSnackbar(err.response?.data?.message || err.message, {
+        variant: 'error',
+      });
     }
   };
 
@@ -103,13 +121,6 @@ export default function CheckoutScreen() {
       <Typography variant="h4" gutterBottom>
         نهایی‌سازی سفارش
       </Typography>
-
-      {/* نمایش خطای پرداخت زرین‌پال */}
-      {paymentError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          پرداخت ناموفق بود. لطفاً مجدداً تلاش کنید.
-        </Alert>
-      )}
 
       <Grid container spacing={4}>
         {/* آدرس */}
@@ -165,10 +176,8 @@ export default function CheckoutScreen() {
                 <option value="ZarinPal">زرین‌پال</option>
               </TextField>
 
-              {loading ? (
+              {orderLoading ? (
                 <CircularProgress />
-              ) : error ? (
-                <Alert severity="error">{error}</Alert>
               ) : (
                 <Button
                   type="submit"
@@ -190,9 +199,7 @@ export default function CheckoutScreen() {
               خلاصه خرید
             </Typography>
             <Typography>آیتم‌ها: {itemsPrice.toFixed(2)} تومان</Typography>
-            <Typography>
-              هزینه ارسال: {shippingPrice.toFixed(2)} تومان
-            </Typography>
+            <Typography>هزینه ارسال: {shippingPrice.toFixed(2)} تومان</Typography>
             <Typography>مالیات: {taxPrice.toFixed(2)} تومان</Typography>
             <Typography fontWeight="bold">
               مجموع: {totalPrice.toFixed(2)} تومان

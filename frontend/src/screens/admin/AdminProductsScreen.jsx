@@ -15,31 +15,29 @@ import {
   Button,
   IconButton,
   CircularProgress,
-  Alert,
   Box,
 } from '@mui/material';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { Edit, Delete } from '@mui/icons-material';
+import { useSnackbar } from 'notistack';
 import Paginate from '../../components/Paginate';
 
 export default function AdminProductsScreen() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { enqueueSnackbar } = useSnackbar();
   const { userInfo } = useSelector((state) => state.user);
 
   const [products, setProducts] = useState([]);
   const [page, setPage]         = useState(1);
   const [pages, setPages]       = useState(1);
   const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
 
-  // هر بار کوئری‌پارامتر تغییر کند، دوباره fetch انجام می‌دهیم
   useEffect(() => {
     if (!userInfo || !userInfo.isAdmin) {
       navigate('/login');
       return;
     }
-    // از کوئری‌پارامتر صفحه را می‌خوانیم
     const params = new URLSearchParams(location.search);
     const pageNumber = Number(params.get('pageNumber')) || 1;
     fetchProducts(pageNumber);
@@ -48,19 +46,15 @@ export default function AdminProductsScreen() {
   const fetchProducts = async (pageNumber = 1) => {
     try {
       setLoading(true);
-      const config = {
-        headers: { Authorization: `Bearer ${userInfo.token}` },
-      };
       const { data } = await axios.get(
         `/api/products?pageNumber=${pageNumber}`,
-        config
+        { headers: { Authorization: `Bearer ${userInfo.token}` } }
       );
-      // data = { products, page, pages }
       setProducts(data.products);
       setPage(data.page);
       setPages(data.pages);
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      enqueueSnackbar(err.response?.data?.message || err.message, { variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -70,17 +64,15 @@ export default function AdminProductsScreen() {
     if (window.confirm('آیا می‌خواهید یک محصول جدید ایجاد کنید؟')) {
       try {
         setLoading(true);
-        const config = {
-          headers: { Authorization: `Bearer ${userInfo.token}` },
-        };
         const { data } = await axios.post(
           '/api/products',
           { sizes: [], colors: [] },
-          config
+          { headers: { Authorization: `Bearer ${userInfo.token}` } }
         );
+        enqueueSnackbar('محصول جدید ایجاد شد', { variant: 'success' });
         navigate(`/admin/product/${data._id}/edit`);
       } catch (err) {
-        setError(err.response?.data?.message || err.message);
+        enqueueSnackbar(err.response?.data?.message || err.message, { variant: 'error' });
       } finally {
         setLoading(false);
       }
@@ -91,16 +83,15 @@ export default function AdminProductsScreen() {
     if (window.confirm('آیا مطمئن هستید؟')) {
       try {
         setLoading(true);
-        const config = {
+        await axios.delete(`/api/products/${id}`, {
           headers: { Authorization: `Bearer ${userInfo.token}` },
-        };
-        await axios.delete(`/api/products/${id}`, config);
-        // بعد از حذف، مجدداً صفحه جاری را fetch می‌کنیم
+        });
+        enqueueSnackbar('محصول حذف شد', { variant: 'success' });
         const params = new URLSearchParams(location.search);
         const pageNumber = Number(params.get('pageNumber')) || 1;
         fetchProducts(pageNumber);
       } catch (err) {
-        setError(err.response?.data?.message || err.message);
+        enqueueSnackbar(err.response?.data?.message || err.message, { variant: 'error' });
       } finally {
         setLoading(false);
       }
@@ -118,8 +109,6 @@ export default function AdminProductsScreen() {
 
       {loading ? (
         <CircularProgress />
-      ) : error ? (
-        <Alert severity="error">{error}</Alert>
       ) : (
         <>
           <Paper>
@@ -154,10 +143,7 @@ export default function AdminProductsScreen() {
                         >
                           <Edit />
                         </IconButton>
-                        <IconButton
-                          onClick={() => deleteHandler(p._id)}
-                          color="error"
-                        >
+                        <IconButton onClick={() => deleteHandler(p._id)} color="error">
                           <Delete />
                         </IconButton>
                       </TableCell>
@@ -167,8 +153,7 @@ export default function AdminProductsScreen() {
               </TableBody>
             </Table>
           </Paper>
-          {/* صفحه‌بندی */}
-          <Paginate page={page} pages={pages} isAdmin={true} />
+          <Paginate page={page} pages={pages} isAdmin />
         </>
       )}
     </Container>
