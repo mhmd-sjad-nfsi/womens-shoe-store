@@ -8,6 +8,7 @@ import { CacheProvider } from "@emotion/react";
 import createCache from "@emotion/cache";
 import stylisRTLPlugin from "stylis-plugin-rtl";
 import { ThemeProvider, CssBaseline } from "@mui/material";
+import { SnackbarProvider } from "notistack";
 
 import App from "./App.jsx";
 import store from "./redux/store.js";

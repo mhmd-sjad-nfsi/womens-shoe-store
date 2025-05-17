@@ -76,6 +76,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
   }
 
   // به‌روز رسانی فیلدها
+  product.user = req.user._id;
+
   product.name = name;
   product.price = price;
   product.description = description;
@@ -120,7 +122,9 @@ export const createProductReview = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error('محصول پیدا نشد');
   }
-
+  if (!product.user) {
+    product.user = req.user._id;
+  }
   // مطمئن شوید کاربر قبلاً نظر نداده
   const alreadyReviewed = product.reviews.find(
     (r) => r.user.toString() === req.user._id.toString()

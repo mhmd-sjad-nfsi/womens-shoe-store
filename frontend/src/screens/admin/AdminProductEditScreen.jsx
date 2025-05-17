@@ -27,20 +27,20 @@ export default function AdminProductEditScreen() {
   const { userInfo } = useSelector((state) => state.user);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const [name, setName]         = useState("");
-  const [price, setPrice]       = useState(0);
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState(0);
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [brand, setBrand]       = useState("");
+  const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
-  const [sizes, setSizes]       = useState([]);
-  const [stock, setStock]       = useState([]);
+  const [sizes, setSizes] = useState([]);
+  const [stock, setStock] = useState([]);
 
   const [uploading, setUploading] = useState(false);
-  const [reviews, setReviews]     = useState([]);
+  const [reviews, setReviews] = useState([]);
 
   // بارگذاری محصول و نقدها
   useEffect(() => {
@@ -51,7 +51,9 @@ export default function AdminProductEditScreen() {
     const fetchProduct = async () => {
       try {
         setLoading(true);
-        const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
+        const config = {
+          headers: { Authorization: `Bearer ${userInfo.token}` },
+        };
         const { data } = await axios.get(`/api/products/${productId}`, config);
         setName(data.name);
         setPrice(data.price);
@@ -107,7 +109,17 @@ export default function AdminProductEditScreen() {
       };
       await axios.put(
         `/api/products/${productId}`,
-        { name, price, description, image: imageUrl, brand, category, sizes, stock, colors: [] },
+        {
+          name,
+          price: Number(price),
+          description,
+          image: imageUrl,
+          brand,
+          category,
+          sizes,
+          stock,
+          colors: [],
+        },
         config
       );
       setSuccess(true);
@@ -125,7 +137,10 @@ export default function AdminProductEditScreen() {
     try {
       setLoading(true);
       const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-      await axios.delete(`/api/products/${productId}/reviews/${reviewId}`, config);
+      await axios.delete(
+        `/api/products/${productId}/reviews/${reviewId}`,
+        config
+      );
       // دوباره بارگذاری نقدها
       const { data } = await axios.get(`/api/products/${productId}`, config);
       setReviews(data.reviews || []);
@@ -153,7 +168,9 @@ export default function AdminProductEditScreen() {
   return (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom>ویرایش محصول</Typography>
+        <Typography variant="h5" gutterBottom>
+          ویرایش محصول
+        </Typography>
 
         {loading ? (
           <CircularProgress />
@@ -163,42 +180,87 @@ export default function AdminProductEditScreen() {
           <>
             <Box component="form" onSubmit={submitHandler}>
               <Stack spacing={2}>
-                {success && <Alert severity="success">محصول با موفقیت بروزرسانی شد</Alert>}
-                <TextField label="نام" value={name} onChange={e => setName(e.target.value)} fullWidth />
-                <TextField label="قیمت" type="number" value={price} onChange={e => setPrice(e.target.value)} fullWidth />
-                <TextField label="دسته" value={category} onChange={e => setCategory(e.target.value)} fullWidth />
-                <TextField label="برند" value={brand} onChange={e => setBrand(e.target.value)} fullWidth />
-                <TextField label="آدرس تصویر" value={imageUrl} onChange={e => setImageUrl(e.target.value)} fullWidth />
+                {success && (
+                  <Alert severity="success">محصول با موفقیت بروزرسانی شد</Alert>
+                )}
+                <TextField
+                  label="نام"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label="قیمت"
+                  type="number"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.valueAsNumber)}
+                  inputProps={{ step: 1, min: 0 }}
+                  fullWidth
+                />
+                <TextField
+                  label="دسته"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label="برند"
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label="آدرس تصویر"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  fullWidth
+                />
 
                 <InputLabel>بارگذاری تصویر</InputLabel>
-                <input type="file" accept="image/*" onChange={uploadFileHandler} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={uploadFileHandler}
+                />
                 {uploading && <CircularProgress size={24} />}
 
                 <TextField
                   label="توضیحات"
                   value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  fullWidth multiline rows={3}
+                  onChange={(e) => setDescription(e.target.value)}
+                  fullWidth
+                  multiline
+                  rows={3}
                 />
 
                 <Box>
                   <Typography variant="subtitle1">سایزها و موجودی:</Typography>
                   {sizes.map((sz, idx) => (
-                    <Box key={sz} sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                    <Box
+                      key={sz}
+                      sx={{ display: "flex", alignItems: "center", mb: 1 }}
+                    >
                       <Typography sx={{ width: 60 }}>{sz}</Typography>
                       <TextField
                         type="number"
                         value={stock[idx]?.count || 0}
-                        onChange={e => handleStockChange(idx, e.target.value)}
+                        onChange={(e) => handleStockChange(idx, e.target.value)}
                         sx={{ width: 100, mr: 2 }}
                         inputProps={{ min: 0 }}
                       />
                     </Box>
                   ))}
-                  <Button variant="outlined" onClick={handleAddSize}>افزودن سایز جدید</Button>
+                  <Button variant="outlined" onClick={handleAddSize}>
+                    افزودن سایز جدید
+                  </Button>
                 </Box>
 
-                <Button type="submit" variant="contained" fullWidth sx={{ mt: 3 }}>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  sx={{ mt: 3 }}
+                >
                   ذخیره تغییرات
                 </Button>
               </Stack>
@@ -206,16 +268,21 @@ export default function AdminProductEditScreen() {
 
             {/* بخش نظرات */}
             <Divider sx={{ my: 4 }} />
-            <Typography variant="h6">نظرات کاربران ({reviews.length})</Typography>
+            <Typography variant="h6">
+              نظرات کاربران ({reviews.length})
+            </Typography>
             {reviews.length === 0 ? (
               <Typography sx={{ mt: 2 }}>هنوز نظری ثبت نشده.</Typography>
             ) : (
               <List>
-                {reviews.map(r => (
+                {reviews.map((r) => (
                   <ListItem
                     key={r._id}
                     secondaryAction={
-                      <IconButton edge="end" onClick={() => deleteReviewHandler(r._id)}>
+                      <IconButton
+                        edge="end"
+                        onClick={() => deleteReviewHandler(r._id)}
+                      >
                         <DeleteIcon />
                       </IconButton>
                     }
