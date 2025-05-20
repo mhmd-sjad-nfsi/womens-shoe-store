@@ -31,7 +31,7 @@ export default function AdminProductEditScreen() {
   const [success, setSuccess] = useState(false);
 
   const [name, setName] = useState("");
-  const [price, setPrice] = useState(0);
+  const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [brand, setBrand] = useState("");
@@ -99,6 +99,8 @@ export default function AdminProductEditScreen() {
   // ذخیره تغییرات محصول
   const submitHandler = async (e) => {
     e.preventDefault();
+    const numericPrice = parseInt(price, 10) || 0;
+
     try {
       setLoading(true);
       const config = {
@@ -111,7 +113,7 @@ export default function AdminProductEditScreen() {
         `/api/products/${productId}`,
         {
           name,
-          price: Number(price),
+          price: numericPrice,
           description,
           image: imageUrl,
           brand,
@@ -191,10 +193,13 @@ export default function AdminProductEditScreen() {
                 />
                 <TextField
                   label="قیمت"
-                  type="number"
+                  type="text" // تغییر از number به text
                   value={price}
-                  onChange={(e) => setPrice(e.target.valueAsNumber)}
-                  inputProps={{ step: 1, min: 0 }}
+                  onChange={(e) => {
+                    // حذف تمام کاراکترهای غیررقمی و تبدیل به عدد معتبر
+                    const value = e.target.value.replace(/[^0-9]/g, "");
+                    setPrice(value);
+                  }}
                   fullWidth
                 />
                 <TextField

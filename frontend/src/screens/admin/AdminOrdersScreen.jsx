@@ -1,3 +1,5 @@
+// src/screens/admin/AdminOrdersScreen.jsx
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
@@ -35,7 +37,9 @@ export default function AdminOrdersScreen() {
         setLoading(false);
       }
     };
-    if (userInfo && userInfo.isAdmin) fetchOrders();
+    if (userInfo && userInfo.isAdmin) {
+      fetchOrders();
+    }
   }, [userInfo]);
 
   return (
@@ -67,24 +71,40 @@ export default function AdminOrdersScreen() {
               {orders.map((order) => (
                 <TableRow key={order._id}>
                   <TableCell>{order._id}</TableCell>
-                  <TableCell>{order.user.name}</TableCell>
+
+                  {/**
+                   * اگر کاربر مرتبط با سفارش حذف شده باشد،
+                   * از optional chaining استفاده می‌کنیم تا ارور ندهد
+                   * و به‌جای نام کاربر، متن «کاربر حذف‌شده» نمایش دهیم.
+                   */}
+                  <TableCell>
+                    {order.user?.name || "کاربر حذف‌شده"}
+                  </TableCell>
+
                   <TableCell>
                     {order.orderItems.reduce((sum, item) => sum + item.qty, 0)}
                   </TableCell>
+
                   <TableCell>
                     {new Date(order.createdAt).toLocaleDateString()}
                   </TableCell>
-                  <TableCell>{order.totalPrice.toFixed(2)}</TableCell>
+
+                  <TableCell>
+                    {order.totalPrice.toLocaleString()} تومان
+                  </TableCell>
+
                   <TableCell>
                     {order.isPaid
                       ? new Date(order.paidAt).toLocaleDateString()
                       : "×"}
                   </TableCell>
+
                   <TableCell>
                     {order.isDelivered
                       ? new Date(order.deliveredAt).toLocaleDateString()
                       : "×"}
                   </TableCell>
+
                   <TableCell>
                     <Button
                       variant="outlined"

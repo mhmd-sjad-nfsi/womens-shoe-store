@@ -99,22 +99,27 @@ export const getUsers = asyncHandler(async (req, res) => {
   res.json(users);
 });
 
+
 // @desc    حذف کاربر
 // @route   DELETE /api/users/:id
 // @access  Private/Admin
 export const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
-  if (user) {
-    if (user.isAdmin) {
-      res.status(400);
-      throw new Error('نمی‌توانید ادمین را حذف کنید');
-    }
-    await user.remove();
-    res.json({ message: 'کاربر حذف شد' });
-  } else {
+
+  if (!user) {
     res.status(404);
     throw new Error('کاربر یافت نشد');
   }
+
+  if (user.isAdmin) {
+    res.status(400);
+    throw new Error('نمی‌توانید ادمین را حذف کنید');
+  }
+
+  // با findByIdAndDelete نیاز به load کامل سند و متد remove نیست
+  await User.findByIdAndDelete(req.params.id);
+
+  res.json({ message: 'کاربر حذف شد' });
 });
 
 // @desc    دریافت کاربر بر اساس ID (برای ویرایش)

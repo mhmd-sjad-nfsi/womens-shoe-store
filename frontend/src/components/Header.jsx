@@ -58,7 +58,7 @@ export default function Header() {
           to="/"
           sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}
         >
-          فروشگاه کفش زنانه
+          فروشگاه کفشینو
         </Typography>
 
         {/* سوییچ تم */}
@@ -162,7 +162,7 @@ export default function Header() {
               color="inherit"
               component={RouterLink}
               to="/login"
-              sx={{ textTransform: 'none', mr: 1 }}
+              sx={{ textTransform: 'none', mr: 2 }}
             >
               ورود
             </Button>
@@ -170,7 +170,7 @@ export default function Header() {
               color="inherit"
               component={RouterLink}
               to="/register"
-              sx={{ textTransform: 'none' }}
+              sx={{ textTransform: 'none' , mr:1,}}
             >
               ثبت‌نام
             </Button>

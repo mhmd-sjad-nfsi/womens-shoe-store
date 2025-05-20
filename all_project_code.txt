@@ -404,22 +404,27 @@ export const getUsers = asyncHandler(async (req, res) => {
   res.json(users);
 });
 
+
 // @desc    حذف کاربر
 // @route   DELETE /api/users/:id
 // @access  Private/Admin
 export const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
-  if (user) {
-    if (user.isAdmin) {
-      res.status(400);
-      throw new Error('نمی‌توانید ادمین را حذف کنید');
-    }
-    await user.remove();
-    res.json({ message: 'کاربر حذف شد' });
-  } else {
+
+  if (!user) {
     res.status(404);
     throw new Error('کاربر یافت نشد');
   }
+
+  if (user.isAdmin) {
+    res.status(400);
+    throw new Error('نمی‌توانید ادمین را حذف کنید');
+  }
+
+  // با findByIdAndDelete نیاز به load کامل سند و متد remove نیست
+  await User.findByIdAndDelete(req.params.id);
+
+  res.json({ message: 'کاربر حذف شد' });
 });
 
 // @desc    دریافت کاربر بر اساس ID (برای ویرایش)
@@ -3084,38 +3089,43 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 import { protect } from '../middleware/authMiddleware.js';
 import axios from 'axios';
-import Order from '../models/orderModel.js';   // ← اضافه شد
+import Order from '../models/orderModel.js';
 
 const router = express.Router();
-const ZP_BASE = 'https://sandbox.zarinpal.com/pg/rest/WebGate';
+// Base URL for Zarinpal sandbox or production based on env
+const ZP_BASE ='https://sandbox.zarinpal.com/pg/v4/payment';
 
 // POST /api/payments/zarinpal
 router.post(
   '/zarinpal',
   protect,
   asyncHandler(async (req, res) => {
-    const { orderId, amount } = req.body;
+    const { orderId, amount, description, metadata } = req.body;
     const merchant_id = process.env.ZP_MERCHANT_ID;
     const callback_url = `${process.env.ZP_CALLBACK_URL}?orderId=${orderId}`;
 
-    const { data } = await axios.post(
-      `${ZP_BASE}/PaymentRequest.json`,
+    // Initiate payment request
+    const resp = await axios.post(
+      `${ZP_BASE}/request.json`,
       {
-        MerchantID: merchant_id,
-        Amount: amount,
-        Description: `پرداخت سفارش ${orderId}`,
-        CallbackURL: callback_url,
+        merchant_id,
+        amount,
+        callback_url,
+        description: description || `پرداخت سفارش ${orderId}`,
+        metadata: metadata || {},
       },
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { 'Content-Type': 'application/json', Accept: 'application/json' } }
     );
 
-    if (data.Status === 100) {
-      return res.json({
-        paymentUrl: `https://sandbox.zarinpal.com/pg/StartPay/${data.Authority}`,
-      });
+    const { data } = resp.data; // data object contains code, authority, fee, etc.
+    if (data.code === 100) {
+      const gateway = process.env.ZP_SANDBOX === 'true'
+        ? 'https://sandbox.zarinpal.com/pg/StartPay'
+        : 'https://payment.zarinpal.com/pg/StartPay';
+      return res.json({ paymentUrl: `${gateway}/${data.authority}` });
     }
 
-    res.status(400).json({ message: 'خطا در ایجاد درخواست پرداخت' });
+    return res.status(400).json({ message: `خطا در ایجاد درخواست پرداخت: ${resp.data.errors?.[0]?.message || 'نامشخص'}` });
   })
 );
 
@@ -3124,40 +3134,45 @@ router.get(
   '/zarinpal/callback',
   asyncHandler(async (req, res) => {
     const { Status, Authority, orderId } = req.query;
-
     if (Status !== 'OK') {
       return res.redirect(`/checkout?paymentError=پرداخت ناموفق بود`);
     }
 
-    // پیدا کردن سفارش و محاسبه مبلغ ریالی
     const order = await Order.findById(orderId);
     if (!order) {
       return res.redirect(`/checkout?paymentError=سفارش یافت نشد`);
     }
-    const merchant_id = process.env.ZP_MERCHANT_ID;
-    const amount = Math.round(order.totalPrice * 10); // تومان→ریال
 
-    // Verify
-    const { data } = await axios.post(
-      `${ZP_BASE}/PaymentVerification.json`,
-      {
-        MerchantID: merchant_id,
-        Authority,
-        Amount: amount,
-      },
-      { headers: { 'Content-Type': 'application/json' } }
+    const merchant_id = process.env.ZP_MERCHANT_ID;
+    const amount = Math.round(order.totalPrice * 10); // تومان → ریال
+
+    // Verify transaction
+    const resp = await axios.post(
+      `${ZP_BASE}/verify.json`,
+      { merchant_id, amount, authority: Authority },
+      { headers: { 'Content-Type': 'application/json', Accept: 'application/json' } }
     );
 
-    if (data.Status === 100) {
-      // علامت‌گذاری سفارش به‌عنوان پرداخت‌شده
+    const { data } = resp.data;
+    if (data.code === 100) {
+      // Mark order as paid
       order.isPaid = true;
       order.paidAt = Date.now();
+      order.paymentResult = {
+        id: data.ref_id,
+        status: 'success',
+        update_time: new Date(),
+        payer: {
+          card_pan: data.card_pan,
+          card_hash: data.card_hash,
+        },
+      };
       await order.save();
-
       return res.redirect(`/order/${orderId}`);
-    } else {
-      return res.redirect(`/checkout?paymentError=پرداخت تأیید نشد`);
     }
+
+    // Payment failed or already verified
+    return res.redirect(`/checkout?paymentError=خطای اعتبارسنجی پرداخت: کد ${data.code}`);
   })
 );
 
@@ -7805,7 +7820,7 @@ export default function Header() {
           to="/"
           sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}
         >
-          فروشگاه کفش زنانه
+          فروشگاه کفشینو
         </Typography>
 
         {/* سوییچ تم */}
@@ -7909,7 +7924,7 @@ export default function Header() {
               color="inherit"
               component={RouterLink}
               to="/login"
-              sx={{ textTransform: 'none', mr: 1 }}
+              sx={{ textTransform: 'none', mr: 2 }}
             >
               ورود
             </Button>
@@ -7917,7 +7932,7 @@ export default function Header() {
               color="inherit"
               component={RouterLink}
               to="/register"
-              sx={{ textTransform: 'none' }}
+              sx={{ textTransform: 'none' , mr:1,}}
             >
               ثبت‌نام
             </Button>
@@ -7988,9 +8003,9 @@ export default function Paginate({ page, pages, isAdmin = false }) {
 
 --- FILE: frontend\src\components\ProductCard.jsx ---
 
-// frontend/src/components/ProductCard.jsx
+// src/components/ProductCard.jsx
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Card,
   CardMedia,
@@ -7998,19 +8013,22 @@ import {
   CardActions,
   Typography,
   Box,
-  IconButton,
   Chip,
   Stack,
-  Rating,
   Button,
   Fade,
+  useTheme,
 } from "@mui/material";
 import { ShoppingCart } from "@mui/icons-material";
 import { Link as RouterLink } from "react-router-dom";
+import Rating from "./Rating"; // ← اینجا کامپوننت سفارشی را ایمپورت می‌کنیم
 
 export default function ProductCard({ product }) {
   const [hover, setHover] = useState(false);
-  const totalStock = product.stock.reduce((sum, s) => sum + s.count, 0);
+  const theme = useTheme();
+
+  // محاسبهٔ موجودی کل
+  const totalStock = product.stock?.reduce((sum, s) => sum + s.count, 0) || 0;
   const lowStock = totalStock < 5;
 
   return (
@@ -8022,98 +8040,145 @@ export default function ProductCard({ product }) {
         borderRadius: 4,
         boxShadow: 2,
         overflow: "hidden",
-        transition: "transform 0.3s, box-shadow 0.3s",
-        '&:hover': {
-          transform: 'translateY(-4px)',
+        transition: "transform 0.3s ease, box-shadow 0.3s ease",
+        "&:hover": {
+          transform: "translateY(-4px)",
           boxShadow: 6,
         },
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        willChange: "transform",
       }}
     >
-      {/* Image Section */}
-      <Box sx={{ position: 'relative', pt: '75%' /* 4:3 aspect ratio */ }}>
+      {/* === بخش تصویر === */}
+      <Box
+        sx={{
+          position: "relative",
+          pt: "75%", // نسبت تصویر 4:3
+          backgroundColor: theme.palette.grey[100],
+        }}
+      >
         <CardMedia
           component="img"
           image={product.image}
-          alt={product.name}
+          alt={product.name || "تصویر محصول"}
+          loading="lazy"
           sx={{
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            transition: 'transform 0.5s ease',
-            ...(hover && { transform: 'scale(1.05)' }),
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            transition: "transform 0.5s ease",
+            ...(hover && {
+              transform: "scale(1.05)",
+              willChange: "transform",
+            }),
           }}
         />
 
-        {/* Category Chip */}
-        <Chip
-          label={product.category}
-          size="small"
-          sx={{
-            position: 'absolute',
-            top: 12,
-            left: 12,
-            bgcolor: 'secondary.main',
-            color: '#fff',
-            px: 1,
-            py: 0.5,
-            fontWeight: 'bold',
-            backdropFilter: 'blur(4px)',
-          }}
-        />
-
-        {/* Low Stock Badge */}
-        {lowStock && (
+        {/* نمایش دسته به صورت Chip */}
+        {product.category && (
           <Chip
-            label="موجودی کم"
+            label={product.category}
             size="small"
-            color="error"
             sx={{
-              position: 'absolute',
+              position: "absolute",
               top: 12,
-              right: 12,
+              left: 12,
+              bgcolor: "secondary.main",
+              color: theme.palette.getContrastText(
+                theme.palette.secondary.main
+              ),
               px: 1,
               py: 0.5,
-              fontWeight: 'bold',
+              fontWeight: "bold",
+              backdropFilter: "blur(4px)",
+              zIndex: 1,
             }}
           />
         )}
 
-        {/* Hover Overlay */}
+        {/* نشانگر کمبود موجودی */}
+        {lowStock && (
+          <Chip
+            label={`فقط ${totalStock} باقی`}
+            size="small"
+            color="error"
+            sx={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              px: 1,
+              py: 0.5,
+              fontWeight: "bold",
+              zIndex: 1,
+            }}
+          />
+        )}
+
+        {/* لایهٔ هاور */}
         <Fade in={hover} timeout={300}>
           <Box
             component={RouterLink}
             to={`/product/${product._id}`}
             sx={{
-              position: 'absolute',
+              position: "absolute",
               inset: 0,
-              bgcolor: 'rgba(0, 0, 0, 0.7)',
-              color: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              textDecoration: 'none',
+              bgcolor: "rgba(0, 0, 0, 0.7)",
+              color: "#fff",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              textDecoration: "none",
               px: 2,
-              textAlign: 'center',
+              textAlign: "center",
+              zIndex: 2,
             }}
+            aria-label={`جزئیات محصول ${product.name}`}
           >
-            <Typography variant="h6" fontWeight="bold" noWrap>
+            <Typography
+              variant="h6"
+              fontWeight="bold"
+              noWrap
+              sx={{ maxWidth: "100%" }}
+            >
               {product.name}
             </Typography>
-            <Rating value={product.rating} precision={0.5} readOnly size="small" sx={{ mt: 0.5 }} />
-            <Typography variant="h5" sx={{ my: 1, fontWeight: 'bold' }}>
-              {product.price.toLocaleString()} تومان
+
+            {/* اینجا از کامپوننت Rating سفارشی استفاده می‌کنیم */}
+            <Rating
+              value={product.rating || 0}
+              text={`(${product.numReviews || 0})`}
+              color="#f8e825"
+            />
+
+            <Typography
+              variant="h5"
+              sx={{
+                my: 1,
+                fontWeight: "bold",
+                color: theme.palette.secondary.main,
+              }}
+            >
+              {product.price?.toLocaleString() || "۰"} تومان
             </Typography>
+
             <Button
               variant="contained"
+              color="secondary"
               startIcon={<ShoppingCart />}
-              sx={{ mt: 1, borderRadius: 2 }}
+              sx={{
+                mt: 1,
+                borderRadius: 2,
+                "&:hover": {
+                  transform: "scale(1.05)",
+                },
+              }}
+              onClick={(e) => e.preventDefault()} // جلوگیری از navigation هنگام کلیک
             >
               افزودن به سبد
             </Button>
@@ -8121,55 +8186,125 @@ export default function ProductCard({ product }) {
         </Fade>
       </Box>
 
-      {/* Content Section */}
-      <CardContent sx={{ flexGrow: 1, px: 2, pt: 2 }}>
+      {/* === بخش محتوا === */}
+      <CardContent
+        sx={{
+          flexGrow: 1,
+          px: 2,
+          pt: 2,
+          backgroundColor: theme.palette.background.paper,
+        }}
+      >
         <Typography
           variant="subtitle1"
           fontWeight="bold"
           noWrap
           title={product.name}
+          sx={{
+            color: theme.palette.text.primary,
+            direction: "rtl", // رفع مشکل چیدمان متن فارسی
+          }}
         >
           {product.name}
         </Typography>
+
         <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 1 }}>
-          <Rating value={product.rating} precision={0.5} size="small" readOnly />
-          <Typography variant="caption" color="text.secondary">
-            ({product.numReviews})
-          </Typography>
+          {/* دوباره همینجا هم کامپوننت Rating را صدا می‌زنیم */}
+          <Rating
+            value={product.rating || 0}
+            text={`(${product.numReviews || 0})`}
+            color="#f8e825"
+          />
         </Stack>
-        <Typography variant="h6" color="primary" sx={{ mt: 1, fontWeight: 'bold' }}>
-          {product.price.toLocaleString()} تومان
+
+        <Typography
+          variant="h6"
+          sx={{
+            mt: 1,
+            fontWeight: "bold",
+            color:
+              theme.palette.mode === "dark"
+                ? theme.palette.secondary.main
+                : theme.palette.primary.main,
+          }}
+        >
+          {product.price?.toLocaleString() || "۰"} تومان
         </Typography>
 
-        {/* Color Swatches */}
-        {product.colors.length > 0 && (
-          <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+        {/* نمایش نمونه‌های رنگ (Color Swatches) */}
+        {product.colors?.length > 0 && (
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              mt: 2,
+              flexWrap: "wrap",
+              gap: 1,
+            }}
+          >
             {product.colors.map((col) => (
               <Box
                 key={col}
                 sx={{
                   width: 20,
                   height: 20,
-                  borderRadius: '50%',
+                  borderRadius: "50%",
                   bgcolor: col,
-                  border: '2px solid',
-                  borderColor: 'background.paper',
+                  border: "2px solid",
+                  borderColor:
+                    theme.palette.mode === "dark"
+                      ? theme.palette.grey[700]
+                      : theme.palette.grey[300],
+                  boxShadow: theme.shadows[1],
+                  cursor: "pointer",
+                  transition: "transform 0.2s",
+                  "&:hover": {
+                    transform: "scale(1.2)",
+                  },
                 }}
+                title={`رنگ ${col}`}
               />
             ))}
           </Stack>
         )}
       </CardContent>
 
-      {/* Action Buttons */}
-      <CardActions sx={{ px: 2, pb: 2 }}>
+      {/* === دکمهٔ «مشاهده جزئیات» === */}
+      <CardActions
+        sx={{
+          px: 2,
+          pb: 2,
+          mt: "auto", // چسباندن انتهای کارت
+        }}
+      >
         <Button
           component={RouterLink}
           to={`/product/${product._id}`}
           size="small"
           variant="outlined"
           fullWidth
-          sx={{ borderRadius: 2 }}
+          sx={{
+            borderRadius: 2,
+            color:
+              theme.palette.mode === "dark"
+                ? theme.palette.secondary.main
+                : theme.palette.primary.main,
+            borderColor:
+              theme.palette.mode === "dark"
+                ? theme.palette.secondary.main
+                : theme.palette.primary.main,
+            "&:hover": {
+              borderWidth: "2px",
+              borderColor:
+                theme.palette.mode === "dark"
+                  ? theme.palette.secondary.dark
+                  : theme.palette.primary.dark,
+              backgroundColor:
+                theme.palette.mode === "dark"
+                  ? theme.palette.secondary.light + "15"
+                  : theme.palette.primary.light + "15",
+            },
+          }}
         >
           مشاهده جزئیات
         </Button>
@@ -8177,6 +8312,60 @@ export default function ProductCard({ product }) {
     </Card>
   );
 }
+
+
+
+--- FILE: frontend\src\components\Rating.jsx ---
+
+// src/components/Rating.jsx
+
+import React from 'react';
+import PropTypes from 'prop-types';
+import { Box, Typography } from '@mui/material';
+import { Star, StarHalf, StarBorder } from '@mui/icons-material';
+
+const Rating = ({ value, text, color = '#f8e825' }) => {
+  // value: عدد امتیاز (مثلاً 3.5)
+  // text: متنی مثل "(10 نظر)" یا "(5 reviews)"
+  // color: رنگ ستاره‌ها (پیش‌فرض: رنگ طلایی)
+
+  // تابع کمکی برای رسم هر یک از ۵ موقعیت ستاره
+  const renderStar = (starIndex) => {
+    if (value >= starIndex) {
+      // اگر امتیاز کامل از این اندیس یا بیشتر است → ستارهٔ پر
+      return <Star key={starIndex} sx={{ color }} />;
+    } else if (value >= starIndex - 0.5) {
+      // اگر امتیاز نیمه‌پر است → ستارهٔ نیمه‌پر
+      return <StarHalf key={starIndex} sx={{ color }} />;
+    } else {
+      // در غیر این صورت ستارهٔ خالی
+      return <StarBorder key={starIndex} sx={{ color }} />;
+    }
+  };
+
+  return (
+    <Box display="flex" alignItems="center">
+      {/* پنج موقعیت ستاره (1 تا 5) */}
+      {[1, 2, 3, 4, 5].map((idx) => renderStar(idx))}
+
+      {/* اگر prop متن داشته باشیم، مثلاً "(۱۰ نظر)" را نمایش بده */}
+      {text && (
+        <Typography variant="body2" sx={{ ml: 0.5 }}>
+          {text}
+        </Typography>
+      )}
+    </Box>
+  );
+};
+
+// تعریف نوع props برای اطمینان از ورودی صحیح
+Rating.propTypes = {
+  value: PropTypes.number.isRequired,    // امتیاز (مثلاً 3.5)
+  text: PropTypes.string,                // متن همراه (مثلاً "(۱۰ نظر)")
+  color: PropTypes.string,               // رنگ ستاره‌ها (hex, rgb, etc.)
+};
+
+export default Rating;
 
 
 
@@ -8605,6 +8794,8 @@ export default store;
 
 --- FILE: frontend\src\screens\admin\AdminOrdersScreen.jsx ---
 
+// src/screens/admin/AdminOrdersScreen.jsx
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
@@ -8642,7 +8833,9 @@ export default function AdminOrdersScreen() {
         setLoading(false);
       }
     };
-    if (userInfo && userInfo.isAdmin) fetchOrders();
+    if (userInfo && userInfo.isAdmin) {
+      fetchOrders();
+    }
   }, [userInfo]);
 
   return (
@@ -8674,24 +8867,40 @@ export default function AdminOrdersScreen() {
               {orders.map((order) => (
                 <TableRow key={order._id}>
                   <TableCell>{order._id}</TableCell>
-                  <TableCell>{order.user.name}</TableCell>
+
+                  {/**
+                   * اگر کاربر مرتبط با سفارش حذف شده باشد،
+                   * از optional chaining استفاده می‌کنیم تا ارور ندهد
+                   * و به‌جای نام کاربر، متن «کاربر حذف‌شده» نمایش دهیم.
+                   */}
+                  <TableCell>
+                    {order.user?.name || "کاربر حذف‌شده"}
+                  </TableCell>
+
                   <TableCell>
                     {order.orderItems.reduce((sum, item) => sum + item.qty, 0)}
                   </TableCell>
+
                   <TableCell>
                     {new Date(order.createdAt).toLocaleDateString()}
                   </TableCell>
-                  <TableCell>{order.totalPrice.toFixed(2)}</TableCell>
+
+                  <TableCell>
+                    {order.totalPrice.toLocaleString()} تومان
+                  </TableCell>
+
                   <TableCell>
                     {order.isPaid
                       ? new Date(order.paidAt).toLocaleDateString()
                       : "×"}
                   </TableCell>
+
                   <TableCell>
                     {order.isDelivered
                       ? new Date(order.deliveredAt).toLocaleDateString()
                       : "×"}
                   </TableCell>
+
                   <TableCell>
                     <Button
                       variant="outlined"
@@ -8748,7 +8957,7 @@ export default function AdminProductEditScreen() {
   const [success, setSuccess] = useState(false);
 
   const [name, setName] = useState("");
-  const [price, setPrice] = useState(0);
+  const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [brand, setBrand] = useState("");
@@ -8816,6 +9025,8 @@ export default function AdminProductEditScreen() {
   // ذخیره تغییرات محصول
   const submitHandler = async (e) => {
     e.preventDefault();
+    const numericPrice = parseInt(price, 10) || 0;
+
     try {
       setLoading(true);
       const config = {
@@ -8828,7 +9039,7 @@ export default function AdminProductEditScreen() {
         `/api/products/${productId}`,
         {
           name,
-          price: Number(price),
+          price: numericPrice,
           description,
           image: imageUrl,
           brand,
@@ -8908,10 +9119,13 @@ export default function AdminProductEditScreen() {
                 />
                 <TextField
                   label="قیمت"
-                  type="number"
+                  type="text" // تغییر از number به text
                   value={price}
-                  onChange={(e) => setPrice(e.target.valueAsNumber)}
-                  inputProps={{ step: 1, min: 0 }}
+                  onChange={(e) => {
+                    // حذف تمام کاراکترهای غیررقمی و تبدیل به عدد معتبر
+                    const value = e.target.value.replace(/[^0-9]/g, "");
+                    setPrice(value);
+                  }}
                   fullWidth
                 />
                 <TextField
@@ -10270,12 +10484,12 @@ export default function OrderScreen() {
 
 --- FILE: frontend\src\screens\ProductScreen.jsx ---
 
+// src/screens/ProductScreen.jsx
+
 import { useState, useEffect } from "react";
 import { useParams, Link as RouterLink, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useSelector } from "react-redux";
-
-import { Alert, TextField } from "@mui/material";
+import { useSelector, useDispatch } from "react-redux";
 
 import {
   Container,
@@ -10284,39 +10498,52 @@ import {
   Grid,
   Box,
   Paper,
-  Rating,
   Chip,
   Stack,
+  Divider,
+  TextField,
+  Alert,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Divider,
   Card,
   CardContent,
   CardMedia,
 } from "@mui/material";
-import { useDispatch } from "react-redux";
+
+// اینجا هر دو کامپوننت را import می‌کنیم:
+// - CustomRating برای نمایش حالت Read‐Only
+// - MuiRating برای حالت تعاملی (در فرم ثبت نظر)
+import CustomRating from "../components/Rating";
+import { Rating as MuiRating } from "@mui/material";
+
 import { addToCart } from "../redux/slices/cartSlice";
 
 export default function ProductScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState("");
-  const [reviewError, setReviewError] = useState("");
   const { userInfo } = useSelector((state) => state.user);
 
   const [product, setProduct] = useState(null);
   const [size, setSize] = useState("");
   const [qty, setQty] = useState(1);
 
+  // وضعیت فرم نظردهی
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [reviewError, setReviewError] = useState("");
+
   useEffect(() => {
     const fetchProduct = async () => {
-      const { data } = await axios.get(`/api/products/${id}`);
-      setProduct(data);
-      setSize(data.sizes[0] || "");
+      try {
+        const { data } = await axios.get(`/api/products/${id}`);
+        setProduct(data);
+        setSize(data.sizes[0] || "");
+      } catch (err) {
+        console.error(err);
+      }
     };
     fetchProduct();
   }, [id]);
@@ -10325,32 +10552,9 @@ export default function ProductScreen() {
     return <Typography>در حال بارگذاری...</Typography>;
   }
 
+  // موجودیِ سایز انتخاب‌شده
   const stockObj = product.stock.find((s) => s.size === size);
   const availableCount = stockObj ? stockObj.count : 0;
-  const submitReviewHandler = async (e) => {
-    e.preventDefault();
-    try {
-      const config = {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userInfo.token}`,
-        },
-      };
-      await axios.post(
-        `/api/products/${id}/reviews`,
-        { rating, comment },
-        config
-      );
-      // بعد از موفقیت، رفرش نقدها
-      const { data } = await axios.get(`/api/products/${id}`);
-      setProduct(data);
-      setRating(0);
-      setComment("");
-      setReviewError("");
-    } catch (err) {
-      setReviewError(err.response?.data?.message || err.message);
-    }
-  };
 
   const addToCartHandler = () => {
     dispatch(
@@ -10366,12 +10570,39 @@ export default function ProductScreen() {
     navigate("/cart");
   };
 
+  const submitReviewHandler = async (e) => {
+    e.preventDefault();
+    try {
+      const config = {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userInfo.token}`,
+        },
+      };
+      await axios.post(
+        `/api/products/${id}/reviews`,
+        { rating, comment },
+        config
+      );
+      // پس از ارسال موفق، دوباره محصول را دریافت می‌کنیم تا نظرات آپدیت شود
+      const { data } = await axios.get(`/api/products/${id}`);
+      setProduct(data);
+      setRating(0);
+      setComment("");
+      setReviewError("");
+    } catch (err) {
+      setReviewError(err.response?.data?.message || err.message);
+    }
+  };
+
   return (
     <Container sx={{ mt: 4 }}>
       <Button component={RouterLink} to="/" sx={{ mb: 3 }} color="secondary">
         ← بازگشت
       </Button>
+
       <Grid container spacing={4}>
+        {/* تصویر محصول */}
         <Grid item xs={12} md={6}>
           <Card elevation={4} sx={{ borderRadius: 4 }}>
             <CardMedia
@@ -10387,23 +10618,32 @@ export default function ProductScreen() {
           </Card>
         </Grid>
 
+        {/* اطلاعات و فرم‌ها */}
         <Grid item xs={12} md={6}>
           <Card elevation={3} sx={{ p: 3, borderRadius: 4 }}>
             <CardContent>
               <Typography variant="h4" fontWeight="bold" gutterBottom>
                 {product.name}
               </Typography>
+
+              {/* قسمت نمایش امتیاز و تعداد نقدها */}
               <Stack direction="row" spacing={1} alignItems="center" mb={2}>
-                <Rating value={product.rating} precision={0.5} readOnly />
-                <Typography variant="body2">({product.numReviews})</Typography>
+                {/* از کامپوننت سفارشی برای نمایش فقط‌خواندنی استفاده می‌کنیم */}
+                <CustomRating
+                  value={product.rating}
+                  text={`(${product.numReviews})`}
+                />
               </Stack>
+
               <Typography variant="h5" color="primary" gutterBottom>
                 {product.price.toLocaleString()} تومان
               </Typography>
+
               <Typography variant="body1" color="text.secondary" paragraph>
                 {product.description}
               </Typography>
-              {/* نمایش نظرات */}
+
+              {/* نمایش لیست نظرات */}
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6">
                   نظرات ({product.numReviews})
@@ -10424,8 +10664,13 @@ export default function ProductScreen() {
                     }}
                   >
                     <Typography fontWeight="bold">{r.name}</Typography>
-                    <Rating value={r.rating} readOnly size="small" />
-                    <Typography variant="caption" color="text.secondary">
+                    {/* اینجا هم برای نمایش امتیازِ هر نقد از کامپوننت سفارشی استفاده می‌کنیم */}
+                    <CustomRating value={r.rating} />
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mt: 0.5 }}
+                    >
                       {new Date(r.createdAt).toLocaleDateString()}
                     </Typography>
                     <Typography sx={{ mt: 1 }}>{r.comment}</Typography>
@@ -10436,18 +10681,26 @@ export default function ProductScreen() {
               {/* فرم ثبت نظر */}
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6">ثبت نظر شما</Typography>
-                {reviewError && <Alert severity="error">{reviewError}</Alert>}
+                {reviewError && (
+                  <Alert severity="error" sx={{ mt: 1 }}>
+                    {reviewError}
+                  </Alert>
+                )}
                 {userInfo ? (
                   <Box
                     component="form"
                     onSubmit={submitReviewHandler}
                     sx={{ mt: 2 }}
                   >
-                    <Rating
-                      value={rating}
-                      onChange={(e, newValue) => setRating(newValue)}
-                      required
-                    />
+                    {/* برای حالت تعاملی (تعریف امتیاز) از MuiRating استفاده می‌کنیم */}
+                        <MuiRating
+                       name="rating-input"
+                       value={rating}
+                       precision={0.5}
+                       onChange={(e, newValue) => setRating(newValue)}
+                       required
+                       sx={{ direction: "ltr" }}
+                     />
                     <TextField
                       label="نظر شما"
                       multiline
@@ -10464,7 +10717,12 @@ export default function ProductScreen() {
                 ) : (
                   <Alert severity="info" sx={{ mt: 2 }}>
                     لطفاً{" "}
-                    <Link to={`/login?redirect=/product/${id}`}>وارد شوید</Link>{" "}
+                    <RouterLink
+                      to={`/login?redirect=/product/${id}`}
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      وارد شوید
+                    </RouterLink>{" "}
                     تا بتوانید نظر ثبت کنید.
                   </Alert>
                 )}
@@ -10472,6 +10730,7 @@ export default function ProductScreen() {
 
               <Divider sx={{ my: 2 }} />
 
+              {/* انتخاب سایز، تعداد و افزودن به سبد */}
               <Stack direction="row" spacing={2} alignItems="center" mb={2}>
                 <FormControl size="small">
                   <InputLabel>سایز</InputLabel>
@@ -10508,7 +10767,9 @@ export default function ProductScreen() {
 
                 <Chip
                   label={
-                    availableCount > 0 ? `موجود: ${availableCount}` : "ناموجود"
+                    availableCount > 0
+                      ? `موجود: ${availableCount}`
+                      : "ناموجود"
                   }
                   color={availableCount > 0 ? "success" : "error"}
                 />
@@ -10739,69 +11000,119 @@ export default function RegisterScreen() {
 --- FILE: frontend\src\theme\index.js ---
 
 // frontend/src/theme/index.js
-
 import { createTheme } from '@mui/material/styles';
 
-// پالت رنگ برای حالت روشن با ترکیب مدرن و شگفت‌انگیز
-const lightPalette = {
-  mode: 'light',
-  primary: { main: '#0D3B66' },       // آبی تیره مدرن
-  secondary: { main: '#FAA916' },     // زرد پرانرژی
-  error: { main: '#D7263D' },         // قرمز برجسته
-  info: { main: '#118AB2' },          // آبی روشن
-  success: { main: '#06D6A0' },       // سبز زنده
-  background: { default: '#F5F7FA', paper: '#FFFFFF' },
-  text: { primary: '#1B1B1E', secondary: '#5B5B5F' },
-};
-
-// پالت رنگ برای حالت تاریک با حس و حال مدرن
-const darkPalette = {
-  mode: 'dark',
-  primary: { main: '#118AB2' },       // آبی خنک
-  secondary: { main: '#06D6A0' },     // سبز نعنایی
-  error: { main: '#FF6B6B' },         // قرمز ملایم
-  info: { main: '#4EA8DE' },          // آبی روشن‌تر
-  success: { main: '#A0E8AF' },       // سبز پاستلی
-  background: { default: '#121212', paper: '#1E1E1E' },
-  text: { primary: '#E0E0E0', secondary: '#A0A0A0' },
-};
-
-// تنظیمات مشترک
-const baseOptions = {
+const baseSettings = {
   direction: 'rtl',
-  typography: { fontFamily: 'Vazirmatn, sans-serif' },
-  shape: { borderRadius: 12 },
+  typography: {
+    fontFamily: 'Vazirmatn, sans-serif',
+    h1: { 
+      fontWeight: 900,
+      letterSpacing: '-1.5px',
+      '@media (max-width:600px)': { fontSize: '2.5rem' } // ریسپانسیو
+    },
+    button: { fontWeight: 700 }
+  },
+  shape: { borderRadius: 10 },
+  shadows: Array(25).fill('0 3px 10px rgba(10, 47, 42, 0.1)')
 };
 
-// تابع ساخت تم بر اساس mode
 export function createAppTheme(mode) {
-  const palette = mode === 'light' ? lightPalette : darkPalette;
+  const isLight = mode === 'light';
+  
   return createTheme({
-    ...baseOptions,
-    palette,
+    ...baseSettings,
+    palette: {
+      mode,
+      primary: { main: '#0A2F2A' },
+      secondary: { main: '#D4AF37' },
+      background: {
+        default: isLight ? '#F5F5F5' : '#051E1A', // سبز تیره‌تر برای کنتراست بهتر
+        paper: isLight ? '#FFFFFF' : '#08332D'
+      },
+      text: {
+        primary: isLight ? '#0A2F2A' : '#EEDC9A', // طلایی روشن‌تر برای خوانایی
+        secondary: isLight ? '#5D4037' : '#D4AF37CC' // طلایی با شفافیت
+      }
+    },
+    components: {
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            backgroundColor: mode === 'dark' ? '#051E1A' : '#0A2F2A', // تطابق با تم
+            color: '#D4AF37',
+            boxShadow: 'none',
+            borderBottom: `2px solid ${mode === 'dark' ? '#D4AF3755' : '#0A2F2A20'}`
+          }
+        }
+      },
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            border: '2px solid',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              transform: 'scale(1.02)',
+              boxShadow: isLight 
+                ? '0 4px 12px rgba(10, 47, 42, 0.2)' 
+                : '0 4px 12px rgba(212, 175, 55, 0.3)' // سایه طلایی در تاریکی
+            }
+          },
+          containedPrimary: { 
+            color: '#D4AF37',
+            backgroundColor: mode === 'dark' ? '#0A2F2A' : '#0A2F2A', // ثابت نگه داشتن رنگ
+            '&:hover': { backgroundColor: mode === 'dark' ? '#08332D' : '#0B372F' }
+          },
+          containedSecondary: { 
+            color: mode === 'dark' ? '#051E1A' : '#0A2F2A', // متن تیره در تاریکی
+            backgroundColor: '#D4AF37',
+            '&:hover': { backgroundColor: '#E5C158' }
+          }
+        }
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            border: '1px solid',
+            borderColor: mode === 'dark' ? '#D4AF37AA' : '#D4AF3755', // حاشیه پررنگ‌تر در تاریکی
+            backdropFilter: 'blur(8px)',
+            backgroundColor: mode === 'dark' ? '#08332DCC' : '#FFFFFFCC' // شفافیت تطبیقی
+          }
+        }
+      },
+      MuiInputBase: {
+        styleOverrides: {
+          root: {
+            '& label.Mui-focused': { color: '#D4AF37' },
+            '& .MuiOutlinedInput-root': {
+              '&.Mui-focused fieldset': { borderColor: '#D4AF37' }
+            }
+          }
+        }
+      }
+    }
   });
 }
 
 
-
 --- FILE: frontend\vite.config.js ---
 
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
+// vite.config.js
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8000',  // آدرس و پورتی که Express روی آن گوش می‌دهد
         changeOrigin: true,
         secure: false,
       },
     },
   },
-});
+})
 
 
 

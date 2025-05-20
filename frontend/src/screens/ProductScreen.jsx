@@ -1,9 +1,9 @@
+// src/screens/ProductScreen.jsx
+
 import { useState, useEffect } from "react";
 import { useParams, Link as RouterLink, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useSelector } from "react-redux";
-
-import { Alert, TextField } from "@mui/material";
+import { useSelector, useDispatch } from "react-redux";
 
 import {
   Container,
@@ -12,39 +12,52 @@ import {
   Grid,
   Box,
   Paper,
-  Rating,
   Chip,
   Stack,
+  Divider,
+  TextField,
+  Alert,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Divider,
   Card,
   CardContent,
   CardMedia,
 } from "@mui/material";
-import { useDispatch } from "react-redux";
+
+// اینجا هر دو کامپوننت را import می‌کنیم:
+// - CustomRating برای نمایش حالت Read‐Only
+// - MuiRating برای حالت تعاملی (در فرم ثبت نظر)
+import CustomRating from "../components/Rating";
+import { Rating as MuiRating } from "@mui/material";
+
 import { addToCart } from "../redux/slices/cartSlice";
 
 export default function ProductScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState("");
-  const [reviewError, setReviewError] = useState("");
   const { userInfo } = useSelector((state) => state.user);
 
   const [product, setProduct] = useState(null);
   const [size, setSize] = useState("");
   const [qty, setQty] = useState(1);
 
+  // وضعیت فرم نظردهی
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [reviewError, setReviewError] = useState("");
+
   useEffect(() => {
     const fetchProduct = async () => {
-      const { data } = await axios.get(`/api/products/${id}`);
-      setProduct(data);
-      setSize(data.sizes[0] || "");
+      try {
+        const { data } = await axios.get(`/api/products/${id}`);
+        setProduct(data);
+        setSize(data.sizes[0] || "");
+      } catch (err) {
+        console.error(err);
+      }
     };
     fetchProduct();
   }, [id]);
@@ -53,32 +66,9 @@ export default function ProductScreen() {
     return <Typography>در حال بارگذاری...</Typography>;
   }
 
+  // موجودیِ سایز انتخاب‌شده
   const stockObj = product.stock.find((s) => s.size === size);
   const availableCount = stockObj ? stockObj.count : 0;
-  const submitReviewHandler = async (e) => {
-    e.preventDefault();
-    try {
-      const config = {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userInfo.token}`,
-        },
-      };
-      await axios.post(
-        `/api/products/${id}/reviews`,
-        { rating, comment },
-        config
-      );
-      // بعد از موفقیت، رفرش نقدها
-      const { data } = await axios.get(`/api/products/${id}`);
-      setProduct(data);
-      setRating(0);
-      setComment("");
-      setReviewError("");
-    } catch (err) {
-      setReviewError(err.response?.data?.message || err.message);
-    }
-  };
 
   const addToCartHandler = () => {
     dispatch(
@@ -94,12 +84,39 @@ export default function ProductScreen() {
     navigate("/cart");
   };
 
+  const submitReviewHandler = async (e) => {
+    e.preventDefault();
+    try {
+      const config = {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userInfo.token}`,
+        },
+      };
+      await axios.post(
+        `/api/products/${id}/reviews`,
+        { rating, comment },
+        config
+      );
+      // پس از ارسال موفق، دوباره محصول را دریافت می‌کنیم تا نظرات آپدیت شود
+      const { data } = await axios.get(`/api/products/${id}`);
+      setProduct(data);
+      setRating(0);
+      setComment("");
+      setReviewError("");
+    } catch (err) {
+      setReviewError(err.response?.data?.message || err.message);
+    }
+  };
+
   return (
     <Container sx={{ mt: 4 }}>
       <Button component={RouterLink} to="/" sx={{ mb: 3 }} color="secondary">
         ← بازگشت
       </Button>
+
       <Grid container spacing={4}>
+        {/* تصویر محصول */}
         <Grid item xs={12} md={6}>
           <Card elevation={4} sx={{ borderRadius: 4 }}>
             <CardMedia
@@ -115,23 +132,32 @@ export default function ProductScreen() {
           </Card>
         </Grid>
 
+        {/* اطلاعات و فرم‌ها */}
         <Grid item xs={12} md={6}>
           <Card elevation={3} sx={{ p: 3, borderRadius: 4 }}>
             <CardContent>
               <Typography variant="h4" fontWeight="bold" gutterBottom>
                 {product.name}
               </Typography>
+
+              {/* قسمت نمایش امتیاز و تعداد نقدها */}
               <Stack direction="row" spacing={1} alignItems="center" mb={2}>
-                <Rating value={product.rating} precision={0.5} readOnly />
-                <Typography variant="body2">({product.numReviews})</Typography>
+                {/* از کامپوننت سفارشی برای نمایش فقط‌خواندنی استفاده می‌کنیم */}
+                <CustomRating
+                  value={product.rating}
+                  text={`(${product.numReviews})`}
+                />
               </Stack>
+
               <Typography variant="h5" color="primary" gutterBottom>
                 {product.price.toLocaleString()} تومان
               </Typography>
+
               <Typography variant="body1" color="text.secondary" paragraph>
                 {product.description}
               </Typography>
-              {/* نمایش نظرات */}
+
+              {/* نمایش لیست نظرات */}
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6">
                   نظرات ({product.numReviews})
@@ -152,8 +178,13 @@ export default function ProductScreen() {
                     }}
                   >
                     <Typography fontWeight="bold">{r.name}</Typography>
-                    <Rating value={r.rating} readOnly size="small" />
-                    <Typography variant="caption" color="text.secondary">
+                    {/* اینجا هم برای نمایش امتیازِ هر نقد از کامپوننت سفارشی استفاده می‌کنیم */}
+                    <CustomRating value={r.rating} />
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mt: 0.5 }}
+                    >
                       {new Date(r.createdAt).toLocaleDateString()}
                     </Typography>
                     <Typography sx={{ mt: 1 }}>{r.comment}</Typography>
@@ -164,18 +195,26 @@ export default function ProductScreen() {
               {/* فرم ثبت نظر */}
               <Box sx={{ mt: 4 }}>
                 <Typography variant="h6">ثبت نظر شما</Typography>
-                {reviewError && <Alert severity="error">{reviewError}</Alert>}
+                {reviewError && (
+                  <Alert severity="error" sx={{ mt: 1 }}>
+                    {reviewError}
+                  </Alert>
+                )}
                 {userInfo ? (
                   <Box
                     component="form"
                     onSubmit={submitReviewHandler}
                     sx={{ mt: 2 }}
                   >
-                    <Rating
-                      value={rating}
-                      onChange={(e, newValue) => setRating(newValue)}
-                      required
-                    />
+                    {/* برای حالت تعاملی (تعریف امتیاز) از MuiRating استفاده می‌کنیم */}
+                        <MuiRating
+                       name="rating-input"
+                       value={rating}
+                       precision={0.5}
+                       onChange={(e, newValue) => setRating(newValue)}
+                       required
+                       sx={{ direction: "ltr" }}
+                     />
                     <TextField
                       label="نظر شما"
                       multiline
@@ -192,7 +231,12 @@ export default function ProductScreen() {
                 ) : (
                   <Alert severity="info" sx={{ mt: 2 }}>
                     لطفاً{" "}
-                    <Link to={`/login?redirect=/product/${id}`}>وارد شوید</Link>{" "}
+                    <RouterLink
+                      to={`/login?redirect=/product/${id}`}
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      وارد شوید
+                    </RouterLink>{" "}
                     تا بتوانید نظر ثبت کنید.
                   </Alert>
                 )}
@@ -200,6 +244,7 @@ export default function ProductScreen() {
 
               <Divider sx={{ my: 2 }} />
 
+              {/* انتخاب سایز، تعداد و افزودن به سبد */}
               <Stack direction="row" spacing={2} alignItems="center" mb={2}>
                 <FormControl size="small">
                   <InputLabel>سایز</InputLabel>
@@ -236,7 +281,9 @@ export default function ProductScreen() {
 
                 <Chip
                   label={
-                    availableCount > 0 ? `موجود: ${availableCount}` : "ناموجود"
+                    availableCount > 0
+                      ? `موجود: ${availableCount}`
+                      : "ناموجود"
                   }
                   color={availableCount > 0 ? "success" : "error"}
                 />
