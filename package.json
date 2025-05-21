@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "build": "npm install && npm install --prefix frontend && npm run build --prefix frontend"
+    "start": "node backend/server.js",
+    "server": "nodemon backend/server",
     "frontend": "cd frontend && npm run dev",
     "backend": "cd backend && npm run server",
     "dev": "concurrently \"npm run frontend\" \"npm run backend\""
